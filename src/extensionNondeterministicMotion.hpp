@@ -28,6 +28,10 @@ protected:
     using T::varCubePreInput;
     using T::varCubePreOutput;
     using T::realizable;
+    using T::determinize;
+    using T::preVars;
+    using T::varCubePre;
+    using T::varCubePost;
 
     // Own variables local to this plugin
     BF robotBDD;
@@ -208,7 +212,7 @@ public:
             if (variableTypes[i]==PostMotionState)
             varsBDDread.push_back(variables[i]);
         }
-        std::cerr << "Numer of bits that we expect the robot abstraction BDD to have: " << varsBDDread.size() << std::endl;
+        std::cerr << "Number of bits that we expect the robot abstraction BDD to have: " << varsBDDread.size() << std::endl;
         robotBDD = mgr.readBDDFromFile(robotFileName.c_str(),varsBDDread);
 
 
@@ -267,10 +271,14 @@ public:
                             foundPaths = livetransitions | (nu0.getValue().SwapVariables(varVectorPre,varVectorPost) & !(livenessAssumptions[i]));
                             foundPaths &= safetySys;
                             //BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPathsPreRobot.dot");
+                            // only for those assignments satisfying the robotBDD, find all assignments on non-post-state variables that always yield post states in foundPaths
                             foundPaths = robotAllowedMoves & robotBDD.Implies(foundPaths).UnivAbstract(varCubePostMotionState);
                             //BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPathsPostRobot.dot");
 
                             // Update the inner-most fixed point with the result of applying the enforcable predecessor operator
+                            // NB (JD): To get rid of unintended behaviors due to falsifying safetyEnv, can't we simply do this:
+                            //    foundpaths = foundPaths.ExistAbstract(varCubePostControllerOutput);
+                            //    foundpaths = safetyEnv.Implies(foundPaths).UnivAbstract(varCubePostInput);
                             nu0.update(safetyEnv.Implies(foundPaths).ExistAbstract(varCubePostControllerOutput).UnivAbstract(varCubePostInput));
                         }
 
@@ -317,7 +325,7 @@ public:
     }
 
     void addAutomaticallyGeneratedLivenessAssumption() {
-
+        
         // Create a new liveness assumption that says that always eventually, if an action/pre-state
         // combination may lead to a different position, then it is taken
         BF prePostMotionStatesDifferent = mgr.constantFalse();
@@ -340,6 +348,110 @@ public:
         BF_newDumpDot(*this,robotBDD,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/sometestbdd.dot");
     }
 
+    // void addSafetyAssumption() {
+    //     // Find the safety guarantees which depend on the environment (dynamic obstacles)
+    //     // Note that we only want to single out post robot states because safeties with current states don't suffer from the inevitable collision problem
+    //     BF dynamicObst = mgr.constantFalse();
+    //     BF staticObst = mgr.constantFalse();
+
+    //     std::vector<VariableType> variableTypesOfInterest;
+    //     variableTypesOfInterest.push_back(PreInput);
+    //     variableTypesOfInterest.push_back(PreMotionState);
+    //     variableTypesOfInterest.push_back(PreMotionControlOutput);
+    //     variableTypesOfInterest.push_back(PostInput);
+    //     variableTypesOfInterest.push_back(PostMotionControlOutput);
+    //     std::vector<BF> variablesOfInterest;
+    //     for (auto it = variableTypesOfInterest.begin();it!=variableTypesOfInterest.end();it++) {
+    //         for (unsigned int i=0;i<variables.size();i++) {
+    //             if (variableTypes[i]==*it) {
+    //                 variablesOfInterest.push_back(variables[i]);
+    //             }
+    //         }
+    //     }
+
+    //     while ((safetySys | dynamicObst | staticObst)!=mgr.constantTrue()) { //TODO: safetySys contains non-motion guarantees too -- won't terminate!
+    //         // `determinize' everything but the postMotionStateVars
+    //         BF partialAssignment = determinize((!safetySys) & (!dynamicObst) & (!staticObst), variablesOfInterest);
+    //         BF_newDumpDot(*this,(!safetySys) & (!dynamicObst) & (!staticObst),NULL,"/tmp/TODOlist.dot");
+    //         BF_newDumpDot(*this,partialAssignment,NULL,"/tmp/partialAssignment.dot");
+
+    //         // with this partial assignment, build a cube for the PostMotionStateVars
+    //         BF checkPostRobotStates = mgr.constantFalse();
+    //         while (checkPostRobotStates != mgr.constantTrue()) { // there still exists more PostMotionStateVars satisfying the current predicate. TODO: need??
+    //             BF thisCube = determinize(partialAssignment & (!dynamicObst) & (!staticObst), postMotionStateVars);
+    //             BF_newDumpDot(*this,thisCube,NULL,"/tmp/cube.dot");
+
+    //             // If the cube created by abstracting out the inputs still falsifies the safetySys, treat as static obstacle
+    //             BF cubeOverInputs = thisCube.ExistAbstract(varCubePreInput).ExistAbstract(varCubePostInput);
+    //             if ((cubeOverInputs & safetySys).isFalse()) { //then we have a static obstacle. TODO: current robot states too? (PreRobotMotionVars)
+    //                 for (unsigned int i=0;i<postMotionStateVars.size();i++) {
+    //                     // see if we can build a cube around the given set of assignments
+    //                     BF candidate = thisCube.ExistAbstractSingleVar(postMotionStateVars[i]);
+    //                     if ((candidate & safetySys & (!dynamicObst) & (!staticObst)).isFalse()) {
+    //                         thisCube = candidate;
+    //                     }
+    //                 }
+    //                 staticObst |= thisCube;
+    //             } else {
+    //                  for (unsigned int i=0;i<postMotionStateVars.size();i++) {
+    //                     // see if we can build a cube around the given set of assignments
+    //                     BF candidate = thisCube.ExistAbstractSingleVar(postMotionStateVars[i]);
+    //                     if ((candidate & safetySys & (!dynamicObst) & (!staticObst)).isFalse()) {
+    //                         thisCube = candidate;
+    //                     }
+    //                 }
+    //                 dynamicObst |= thisCube;
+    //             }
+    //             BF_newDumpDot(*this,staticObst,NULL,"/tmp/staticObst.dot");
+    //             BF_newDumpDot(*this,dynamicObst,NULL,"/tmp/dynamicObst.dot");
+    //             checkPostRobotStates = !partialAssignment | dynamicObst | staticObst;
+    //             BF_newDumpDot(*this,checkPostRobotStates,NULL,"/tmp/checkPostRobotStatesInner.dot");
+    //             BF_newDumpDot(*this,safetySys | dynamicObst | staticObst,NULL,"/tmp/checkPostRobotStatesOuter.dot");
+    //         }
+    //     }
+
+        // // Find the state/input combinations where the model of the robot leads to unavoidable collisions with a dynamicObst
+        // std::vector<VariableType> variableTypesOfInterest1;
+        // variableTypesOfInterest.push_back(PreInput);
+        // variableTypesOfInterest.push_back(PreMotionState);
+        // variableTypesOfInterest.push_back(PreMotionControlOutput);
+        // variableTypesOfInterest.push_back(PostInput);
+        // std::vector<BF> variablesOfInterest;
+        // for (auto it = variableTypesOfInterest.begin();it!=variableTypesOfInterest.end();it++) {
+        //     for (unsigned int i=0;i<variables.size();i++) {
+        //         if (variableTypes[i]==*it) {
+        //             variablesOfInterest.push_back(variables[i]);
+        //         }
+        //     }
+        // }
+
+        // BF termSet = dynamicObst;
+        // BF oneStepCandidate = robotBDD & termSet & (!termSet.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost));
+        // while (oneStepCandidate!=mgr.constantFalse()) {
+        //     oneStepCandidate &= termSet;
+        //     BF controlsTODO = termSet.ExistAbstract(varCubePre & PostInput & PostMotionState);
+        //     while (controlsTODO!=mgr.constantFalse()) {
+        //         BF candidateCombinations = determinize(oneStepCandidate, variablesOfInterest);
+        //         if (candidateCombinations.UnivAbstract(PostControllerOutputVars) & (!termSet)).isFalse() {
+        //             oneStepCandidate &= !candidateCombinations;
+        //             break;
+        //         }
+        //         else {
+        //             for () {
+        //                 BF cubeOverControls = determinize(candidateCombinations, PreControllerOutputVars);      
+        //                 if (cubeOverControls & (!termSet)).isFalse() | !(cubeOverControls & termSet & staticObst).isFalse() {
+        //                     // remove from oneStepCandidate
+        //                     oneStepCandidate &= !candidateCombinations;
+        //                     break;
+        //                 }
+        //             }
+        //         }
+        //         termSet &= oneStepCandidate;
+        //     }            
+        // }
+
+    // }
+
 
     /**
      * @brief This function orchestrates the execution of slugs when this plugin is used.
@@ -352,6 +464,8 @@ public:
         } else {
             std::cerr << "RESULT: Specification is unrealizable.\n";
         }
+
+        // addSafetyAssumption();
     }
 
 

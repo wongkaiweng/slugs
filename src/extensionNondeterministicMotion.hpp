@@ -312,14 +312,16 @@ public:
         BF_newDumpDot(*this,winningPositions,NULL,"/tmp/winningPositions.dot");
 
         // Check if for every possible environment initial position the system has a good system initial position
-        BF robotInit = robotBDD.ExistAbstract(varCubePost);
+        // BF robotInit = robotBDD.ExistAbstract(varCubePost);
         BF result;
         if (initSpecialRoboticsSemantics) {
             if (!initSys.isTrue()) std::cerr << "Warning: Initialisation guarantees have been given although these are ignored in semantics-for-robotics mode! \n";
-            result = initEnv.Implies((robotInit & robotInit.Implies(winningPositions).UnivAbstract(varCubePreMotionState)).UnivAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
+            result = initEnv.Implies(winningPositions.ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
         } else {
-            result = initEnv.Implies((robotInit & robotInit.Implies(winningPositions & initSys).UnivAbstract(varCubePreMotionState)).ExistAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
+            result = initEnv.Implies((winningPositions & initSys).ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
         }
+        BF_newDumpDot(*this,initEnv.Implies(winningPositions),NULL,"/tmp/result0.dot");
+        BF_newDumpDot(*this,result,NULL,"/tmp/result.dot");
 
         // Check if the result is well-defind. Might fail after an incorrect modification of the above algorithm
         if (!result.isConstant()) throw "Internal error: Could not establish realizability/unrealizability of the specification.";

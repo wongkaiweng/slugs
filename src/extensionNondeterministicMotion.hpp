@@ -35,10 +35,14 @@ protected:
 
     // Own variables local to this plugin
     BF robotBDD;
+    // SlugsVarVector varVectorPre{PreInput, PreOutput, this};
+    // SlugsVarVector varVectorPost{PostInput, PostOutput, this};
     SlugsVectorOfVarBFs preMotionStateVars{PreMotionState,this};
     SlugsVectorOfVarBFs postMotionStateVars{PostMotionState,this};
     SlugsVarCube varCubePostMotionState{PostMotionState,this};
     SlugsVarCube varCubePostControllerOutput{PostMotionControlOutput,this};
+    SlugsVarCube varCubePreMotionState{PreMotionState,this};
+    SlugsVarCube varCubePreControllerOutput{PreMotionControlOutput,this};
 
 public:
     static GR1Context* makeInstance(std::list<std::string> &filenames) {
@@ -271,7 +275,7 @@ public:
                             foundPaths = livetransitions | (nu0.getValue().SwapVariables(varVectorPre,varVectorPost) & !(livenessAssumptions[i]));
                             foundPaths &= safetySys;
                             //BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPathsPreRobot.dot");
-                            // only for those assignments satisfying the robotBDD, find all assignments on non-post-state variables that always yield post states in foundPaths
+                            // find foundPaths representation over all post states satisfying the robotBDD
                             foundPaths = robotAllowedMoves & robotBDD.Implies(foundPaths).UnivAbstract(varCubePostMotionState);
                             //BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPathsPostRobot.dot");
 
@@ -308,13 +312,13 @@ public:
         BF_newDumpDot(*this,winningPositions,NULL,"/tmp/winningPositions.dot");
 
         // Check if for every possible environment initial position the system has a good system initial position
+        BF robotInit = robotBDD.ExistAbstract(varCubePost);
         BF result;
         if (initSpecialRoboticsSemantics) {
             if (!initSys.isTrue()) std::cerr << "Warning: Initialisation guarantees have been given although these are ignored in semantics-for-robotics mode! \n";
-            result = initEnv.Implies(winningPositions.UnivAbstract(varCubePreOutput)).UnivAbstract(varCubePreInput);
-
+            result = initEnv.Implies((robotInit & robotInit.Implies(winningPositions).UnivAbstract(varCubePreMotionState)).UnivAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
         } else {
-            result = initEnv.Implies((winningPositions & initSys).ExistAbstract(varCubePreOutput)).UnivAbstract(varCubePreInput);
+            result = initEnv.Implies((robotInit & robotInit.Implies(winningPositions & initSys).UnivAbstract(varCubePreMotionState)).ExistAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
         }
 
         // Check if the result is well-defind. Might fail after an incorrect modification of the above algorithm

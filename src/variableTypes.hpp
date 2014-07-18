@@ -152,6 +152,8 @@ REGISTER_VARIABLE_TYPE_HIERARCHY(PreOtherOutput,PreOutput)
 REGISTER_VARIABLE_TYPE_HIERARCHY(PostOtherOutput,PostOutput)
 REGISTER_VARIABLE_TYPE_HIERARCHY(PreMotionControlOutput,PreOutput)
 REGISTER_VARIABLE_TYPE_HIERARCHY(PostMotionControlOutput,PostOutput)
+REGISTER_VARIABLE_TYPE_HIERARCHY(PreMotionState,PreInput)
+REGISTER_VARIABLE_TYPE_HIERARCHY(PostMotionState,PostInput)
 
 // Variables used in extensionExtractSymbolicStrategy.hpp
 REGISTER_VARIABLE_TYPE_HIERARCHY(SymbolicStrategyCounterVar,NoneVariableType)

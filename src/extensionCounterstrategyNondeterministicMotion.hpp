@@ -293,7 +293,7 @@ public:
                         BF foundAssignments = mgr.constantFalse();
                         BF gatheredResults = mgr.constantFalse();
                         BF partialAssignmentsOverPostStates;
-                        //while (((!foundPaths) | foundAssignments) != mgr.constantTrue()) { // while there still exists assignments in the todo list
+                        while (((!foundPaths) | foundAssignments) != mgr.constantTrue()) { // while there still exists assignments in the todo list
                             if (!(robotBDD & foundPaths).isFalse()) {
                                 partialAssignmentsOverPostStates = determinize((robotBDD & foundPaths) & (!foundAssignments), postMotionStateVars);
                             } else {
@@ -304,7 +304,7 @@ public:
                             BF losingPathsForPartialAssignment = (safetyEnv & (safetySys | robotAllowedMoves).Implies(partialAssignmentsOverPostStates)).UnivAbstract(varCubePostControllerOutput);
                             assert(losingPathsForPartialAssignment.isFalse());
                             gatheredResults |= losingPathsForPartialAssignment;
-                        //}
+                        }
 
                         // Dump the paths that we just found into 'strategyDumpingData' - store the current goal
                         // with the BDD

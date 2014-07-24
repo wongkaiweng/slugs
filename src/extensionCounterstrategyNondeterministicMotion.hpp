@@ -48,6 +48,8 @@ protected:
     SlugsVectorOfVarBFs postMotionStateVars{PostMotionState,this};
     SlugsVarCube varCubePostMotionState{PostMotionState,this};
     SlugsVarCube varCubePostControllerOutput{PostMotionControlOutput,this};
+    SlugsVarCube varCubePreMotionState{PreMotionState,this};
+    SlugsVarCube varCubePreControllerOutput{PreMotionControlOutput,this};
 
 public:
 
@@ -163,7 +165,7 @@ public:
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
                         allowedTypes.insert(PostMotionState);
-                        allowedTypes.insert(PostOtherOutput);
+                        // allowedTypes.insert(PostOtherOutput);
                         safetyEnv &= parseBooleanFormula(currentLine,allowedTypes);
                     } else if (readMode==7) {
                         std::set<VariableType> allowedTypes;
@@ -289,22 +291,34 @@ public:
                         // Compute a set of paths that are safe to take - used for the enforceable predecessor operator ('cox')
                         foundPaths = livetransitions & (mu0.getValue().SwapVariables(varVectorPre,varVectorPost) | (livenessAssumptions[i]));
 
+                        BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPaths.dot");
                         // Abstract out the PostMotionControlOutput without destroying the PostMotionState dependence
                         BF foundAssignments = mgr.constantFalse();
-                        BF gatheredResults = mgr.constantFalse();
+                        BF gatheredResultsPreservedMotionStates = mgr.constantFalse();
                         BF partialAssignmentsOverPostStates;
-                        while (((!foundPaths) | foundAssignments) != mgr.constantTrue()) { // while there still exists assignments in the todo list
+                        while (((!(robotBDD & foundPaths)) | foundAssignments) != mgr.constantTrue()) { // while there still exists assignments in the todo list
                             if (!(robotBDD & foundPaths).isFalse()) {
-                                partialAssignmentsOverPostStates = determinize((robotBDD & foundPaths) & (!foundAssignments), postMotionStateVars);
+                                // partialAssignmentsOverPostStates = determinize((robotBDD & foundPaths) & (!foundAssignments), postMotionStateVars);
+                                partialAssignmentsOverPostStates = determinize((robotAllowedMoves.Implies(robotBDD & safetySys.Implies(foundPaths))) & (!foundAssignments), postMotionStateVars);
                             } else {
                                 partialAssignmentsOverPostStates = mgr.constantFalse();
                             }
                             foundAssignments |= partialAssignmentsOverPostStates;
                             BF_newDumpDot(*this,partialAssignmentsOverPostStates,NULL,"/tmp/partialAssignmentsOverPostStates.dot");
-                            BF losingPathsForPartialAssignment = (safetyEnv & (safetySys | robotAllowedMoves).Implies(partialAssignmentsOverPostStates)).UnivAbstract(varCubePostControllerOutput);
-                            assert(losingPathsForPartialAssignment.isFalse());
-                            gatheredResults |= losingPathsForPartialAssignment;
+                            // BF winningPathsForPartialAssignment = (safetyEnv & (safetySys & robotAllowedMoves).Implies(partialAssignmentsOverPostStates)).UnivAbstract(varCubePostControllerOutput);
+                            BF winningPathsForPartialAssignment = (safetyEnv & partialAssignmentsOverPostStates).UnivAbstract(varCubePostControllerOutput);
+                            BF_newDumpDot(*this,(safetyEnv & robotAllowedMoves.Implies(partialAssignmentsOverPostStates)),NULL,"/tmp/resultBeforeUnivAbstractWithMotionStates.dot");
+                            BF_newDumpDot(*this,winningPathsForPartialAssignment,NULL,"/tmp/winningPathsForPartialAssignment.dot");
+                            BF_newDumpDot(*this,foundAssignments,NULL,"/tmp/foundAssignments.dot");
+                            BF_newDumpDot(*this,((!(robotBDD & foundPaths)) | foundAssignments),NULL,"/tmp/exitCriterion.dot");
+                            //assert(winningPathsForPartialAssignment.isFalse());
+                            gatheredResultsPreservedMotionStates |= winningPathsForPartialAssignment;
                         }
+
+                        BF existsPostStates = robotAllowedMoves.Implies(robotBDD & safetySys.Implies(foundPaths)).ExistAbstract(varCubePostMotionState);
+                        BF gatheredResults = (safetyEnv & existsPostStates).UnivAbstract(varCubePostControllerOutput);
+                        BF_newDumpDot(*this,gatheredResultsPreservedMotionStates.ExistAbstract(varCubePostMotionState).ExistAbstract(varCubePostInput),NULL,"/tmp/mu0Looped.dot");
+                        BF_newDumpDot(*this,gatheredResults.ExistAbstract(varCubePostInput),NULL,"/tmp/mu0.dot");
 
                         // Dump the paths that we just found into 'strategyDumpingData' - store the current goal
                         // with the BDD
@@ -334,6 +348,7 @@ public:
 
     // We found the set of winning positions
     winningPositions = mu2.getValue();
+    BF_newDumpDot(*this,winningPositions,NULL,"/tmp/winningPositions.dot");
 }
 
 void addAutomaticallyGeneratedLivenessAssumption() {
@@ -367,9 +382,9 @@ void checkRealizability() {
     // Check if for every possible environment initial position the system has a good system initial position
     BF result;
     if (specialRoboticsSemantics) {
-        result = (initEnv & initSys & winningPositions).ExistAbstract(varCubePreOutput).ExistAbstract(varCubePreInput);
+        result = (initEnv & initSys & winningPositions.UnivAbstract(varCubePreMotionState)).ExistAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
     } else {
-        result = (initEnv & (initSys.Implies(winningPositions)).UnivAbstract(varCubePreOutput)).ExistAbstract(varCubePreInput);
+        result = (initEnv & (initSys.Implies(winningPositions)).UnivAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput)).ExistAbstract(varCubePreInput);
     }
 
     // Check if the result is well-defind. Might fail after an incorrect modification of the above algorithm

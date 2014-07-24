@@ -163,7 +163,7 @@ public:
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
                         allowedTypes.insert(PostMotionState);
-                        allowedTypes.insert(PostOtherOutput);
+                        // allowedTypes.insert(PostOtherOutput);
                         safetyEnv &= parseBooleanFormula(currentLine,allowedTypes);
                     } else if (readMode==7) {
                         std::set<VariableType> allowedTypes;

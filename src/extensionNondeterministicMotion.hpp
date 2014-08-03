@@ -39,6 +39,7 @@ protected:
     // SlugsVarVector varVectorPost{PostInput, PostOutput, this};
     SlugsVectorOfVarBFs preMotionStateVars{PreMotionState,this};
     SlugsVectorOfVarBFs postMotionStateVars{PostMotionState,this};
+    // SlugsVectorOfVarBFs postInputVars{PostInput,this};
     SlugsVarCube varCubePostMotionState{PostMotionState,this};
     SlugsVarCube varCubePostControllerOutput{PostMotionControlOutput,this};
     SlugsVarCube varCubePreMotionState{PreMotionState,this};

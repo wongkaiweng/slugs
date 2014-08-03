@@ -23,8 +23,8 @@ protected:
     using T::variableTypes;
     using T::livenessGuarantees;
     using T::livenessAssumptions;
-    using T::varVectorPre;
-    using T::varVectorPost;
+    // using T::varVectorPre;
+    // using T::varVectorPost;
     using T::varCubePostOutput;
     using T::varCubePostInput;
     using T::varCubePreOutput;
@@ -37,8 +37,8 @@ protected:
     using T::determinize;
     using T::winningPositions;
     using T::realizable;
-    using T::varCubePre;
-    using T::varCubePost;
+    // using T::varCubePre;
+    // using T::varCubePost;
 
     std::vector<boost::tuple<unsigned int, unsigned int,BF> > strategyDumpingData;
 
@@ -50,6 +50,10 @@ protected:
     SlugsVarCube varCubePostControllerOutput{PostMotionControlOutput,this};
     SlugsVarCube varCubePreMotionState{PreMotionState,this};
     SlugsVarCube varCubePreControllerOutput{PreMotionControlOutput,this};
+    SlugsVarVector varVectorPre{Pre, this}; // needed because the PreMotionState gets left out in GR1Context
+    SlugsVarVector varVectorPost{Post, this};
+    SlugsVarCube varCubePre{Pre,this};
+    SlugsVarCube varCubePost{Post,this};
 
 public:
 
@@ -292,32 +296,10 @@ public:
                         foundPaths = livetransitions & (mu0.getValue().SwapVariables(varVectorPre,varVectorPost) | (livenessAssumptions[i]));
 
                         BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPaths.dot");
-                        // Abstract out the PostMotionControlOutput without destroying the PostMotionState dependence
-                        BF foundAssignments = mgr.constantFalse();
-                        BF gatheredResultsPreservedMotionStates = mgr.constantFalse();
-                        BF partialAssignmentsOverPostStates;
-                        while (((!(robotBDD & foundPaths)) | foundAssignments) != mgr.constantTrue()) { // while there still exists assignments in the todo list
-                            if (!(robotBDD & foundPaths).isFalse()) {
-                                // partialAssignmentsOverPostStates = determinize((robotBDD & foundPaths) & (!foundAssignments), postMotionStateVars);
-                                partialAssignmentsOverPostStates = determinize((robotAllowedMoves.Implies(robotBDD & safetySys.Implies(foundPaths))) & (!foundAssignments), postMotionStateVars);
-                            } else {
-                                partialAssignmentsOverPostStates = mgr.constantFalse();
-                            }
-                            foundAssignments |= partialAssignmentsOverPostStates;
-                            BF_newDumpDot(*this,partialAssignmentsOverPostStates,NULL,"/tmp/partialAssignmentsOverPostStates.dot");
-                            // BF winningPathsForPartialAssignment = (safetyEnv & (safetySys & robotAllowedMoves).Implies(partialAssignmentsOverPostStates)).UnivAbstract(varCubePostControllerOutput);
-                            BF winningPathsForPartialAssignment = (safetyEnv & partialAssignmentsOverPostStates).UnivAbstract(varCubePostControllerOutput);
-                            BF_newDumpDot(*this,(safetyEnv & robotAllowedMoves.Implies(partialAssignmentsOverPostStates)),NULL,"/tmp/resultBeforeUnivAbstractWithMotionStates.dot");
-                            BF_newDumpDot(*this,winningPathsForPartialAssignment,NULL,"/tmp/winningPathsForPartialAssignment.dot");
-                            BF_newDumpDot(*this,foundAssignments,NULL,"/tmp/foundAssignments.dot");
-                            BF_newDumpDot(*this,((!(robotBDD & foundPaths)) | foundAssignments),NULL,"/tmp/exitCriterion.dot");
-                            //assert(winningPathsForPartialAssignment.isFalse());
-                            gatheredResultsPreservedMotionStates |= winningPathsForPartialAssignment;
-                        }
 
                         BF existsPostStates = robotAllowedMoves.Implies(robotBDD & safetySys.Implies(foundPaths)).ExistAbstract(varCubePostMotionState);
+                        // BF existsPostStates = (safetySys.Implies(foundPaths)).ExistAbstract(varCubePostMotionState);
                         BF gatheredResults = (safetyEnv & existsPostStates).UnivAbstract(varCubePostControllerOutput);
-                        BF_newDumpDot(*this,gatheredResultsPreservedMotionStates.ExistAbstract(varCubePostMotionState).ExistAbstract(varCubePostInput),NULL,"/tmp/mu0Looped.dot");
                         BF_newDumpDot(*this,gatheredResults.ExistAbstract(varCubePostInput),NULL,"/tmp/mu0.dot");
 
                         // Dump the paths that we just found into 'strategyDumpingData' - store the current goal

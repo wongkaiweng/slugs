@@ -43,14 +43,15 @@ protected:
     using T::postInputVars;
     using T::postOutputVars;
     using T::doesVariableInheritType;
+    using T::robotBDD;
 
     // Own variables local to this plugin
-    BF robotBDD;
     SlugsVectorOfVarBFs preMotionStateVars{PreMotionState,this};
     SlugsVectorOfVarBFs postMotionStateVars{PostMotionState,this};
     SlugsVectorOfVarBFs postControllerOutputVars{PostMotionControlOutput,this};
     SlugsVarCube varCubePostMotionState{PostMotionState,this};
     SlugsVarCube varCubePostControllerOutput{PostMotionControlOutput,this};
+    SlugsVarCube varCubePreControllerOutput{PreMotionControlOutput,this};
 
 public:
 
@@ -159,88 +160,121 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         todoList.pop_front();
         unsigned int stateNum = lookupTableForPastStates[current];
         BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];
-        // Print state information
-        outputStream << "State " << stateNum << " with rank (" << current.second.first << "," << current.second.second << ") -> <";
-        bool first = true;
-        for (unsigned int i=0;i<variables.size();i++) {
-            if (doesVariableInheritType(i,Pre)) {
-                if (first) {
-                    first = false;
-                } else {
-                    outputStream << ", ";
+
+        BF robotAllowedMoves = robotBDD.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
+        if (!(currentPossibilities & robotAllowedMoves).isFalse()){
+            // Print state information
+            outputStream << "State " << stateNum << " with rank (" << current.second.first << "," << current.second.second << ") -> <";
+            bool first = true;
+            for (unsigned int i=0;i<variables.size();i++) {
+                if (doesVariableInheritType(i,Pre)) {
+                    if (first) {
+                        first = false;
+                    } else {
+                        outputStream << ", ";
+                    }
+                    outputStream << variableNames[i] << ":";
+                    outputStream << (((currentPossibilities & variables[i]).isFalse())?"0":"1");
                 }
-                outputStream << variableNames[i] << ":";
-                outputStream << (((currentPossibilities & variables[i]).isFalse())?"0":"1");
             }
-        }
 
-        outputStream << ">\n\tWith successors : ";
-        first = true;
+            outputStream << ">\n\tWith successors : ";
+            first = true;
 
-        // Can we enforce a deadlock?
-        BF deadlockInput = (currentPossibilities & safetyEnv & !safetySys).UnivAbstract(varCubePostOutput);
-        if (deadlockInput!=mgr.constantFalse()) {
-            addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream);
-        } else {
-
-            // No deadlock in sight -> Jump to a different liveness guarantee if necessary.
-            while ((currentPossibilities & positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second])==mgr.constantFalse()) current.second.second = (current.second.second + 1) % livenessGuarantees.size();
-            currentPossibilities &= positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second];
-            assert(currentPossibilities != mgr.constantFalse());
-            BF remainingTransitions = currentPossibilities;
-
-            // Choose one next input and stick to it!
-            remainingTransitions = determinize(remainingTransitions,postInputVars);
-
-            // Switching goals
-            while (!(remainingTransitions & safetySys).isFalse()) {
-
-                BF safeTransition = remainingTransitions & safetySys;
-                BF preAndPostWithoutRobotMove = determinize(safeTransition, postControllerOutputVars);
-                BF possibleNextStatesOverTheModel = preAndPostWithoutRobotMove & robotBDD;
-                BF newCombination = possibleNextStatesOverTheModel.ExistAbstract(varCubePostMotionState);
-
-                // Jump as much forward  in the liveness assumption list as possible ("stuttering avoidance")
-                unsigned int nextLivenessAssumption = current.second.first;
-                bool firstTry = true;
-                while (((nextLivenessAssumption != current.second.first) | firstTry) && !((livenessAssumptions[nextLivenessAssumption] & newCombination).isFalse())) {
-                    nextLivenessAssumption  = (nextLivenessAssumption + 1) % livenessAssumptions.size();
-                    firstTry = false;
-                }
-
-                //Mark which input has been captured by this case. Use the same input for other successors
-                remainingTransitions &= !newCombination;
-
-                // We don't need the pre information from the point onwards anymore.
-                newCombination = newCombination.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
-
-                unsigned int tn;
-
-                std::pair<size_t, std::pair<unsigned int, unsigned int> > target;
-
-                target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(nextLivenessAssumption, current.second.second));
-
-                if (lookupTableForPastStates.count(target)==0) {
-                    tn = lookupTableForPastStates[target] = bfsUsedInTheLookupTable.size();
-                    bfsUsedInTheLookupTable.push_back(newCombination);
-                    todoList.push_back(target);
-                } else {
-                    tn = lookupTableForPastStates[target];
-                }
-
-                // Print
-                if (first) {
-                    first = false;
-                } else {
-                    outputStream << ", ";
-                }
-                outputStream << tn;
-
+            // Can we enforce a deadlock?
+            BF possibilitiesAndRobotBDD = currentPossibilities & robotBDD;
+            // BF_newDumpDot(*this,currentPossibilities,NULL,"/tmp/AcurrentPossibilitiesUsedInDeadlockCheck.dot");
+            // BF_newDumpDot(*this,!safetySys,NULL,"/tmp/AnegatedSafetySys.dot");
+            // BF_newDumpDot(*this,currentPossibilities & robotBDD,NULL,"/tmp/AcurrentPossibilitiesAndRobotBDD.dot");
+            BF deadlockInput = mgr.constantTrue();
+            while (!possibilitiesAndRobotBDD.isFalse()) {
+                BF possibilitiesForThisControl = determinize(possibilitiesAndRobotBDD, postControllerOutputVars);
+                possibilitiesAndRobotBDD &= !possibilitiesForThisControl;
+                deadlockInput &= (possibilitiesForThisControl & !safetySys).ExistAbstract(varCubePostMotionState).ExistAbstract(varCubePostControllerOutput);
+                
+                // BF_newDumpDot(*this,possibilitiesForThisControl,NULL,"/tmp/ApossibilitiesForThisControl.dot");
+                // BF_newDumpDot(*this,(possibilitiesForThisControl & !safetySys),NULL,"/tmp/ApossibilitiesThatNegateSys.dot");
+                // BF_newDumpDot(*this,(possibilitiesForThisControl & !safetySys).ExistAbstract(varCubePostMotionState).ExistAbstract(varCubePostMotionState),NULL,"/tmp/AexistAbstractedPossibilitiesThatNegateSys.dot");
+                // BF_newDumpDot(*this,deadlockInput,NULL,"/tmp/AdeadlockInput.dot");
             }
-        }
+            if (deadlockInput!=mgr.constantFalse()) {
+                addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream);
+            } else {
 
-        outputStream << "\n";
+                // No deadlock in sight -> Jump to a different liveness guarantee if necessary.
+                while ((currentPossibilities & positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second])==mgr.constantFalse()) current.second.second = (current.second.second + 1) % livenessGuarantees.size();
+                currentPossibilities &= positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second];
+                assert(currentPossibilities != mgr.constantFalse());
+                BF remainingTransitions = currentPossibilities;
+
+                // Choose one next input and stick to it!
+                // BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitionsBefore.dot");
+                remainingTransitions = determinize(remainingTransitions & robotAllowedMoves,postInputVars);
+                // BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitionsAfter.dot");
+
+                // Switching goals
+                while (!(remainingTransitions & robotBDD & safetySys).isFalse()) {
+
+                    BF safeTransition = remainingTransitions & robotBDD & safetySys;
+                    BF possibleNextControlsOverTheModel = determinize(safeTransition, postControllerOutputVars);
+
+                    //Mark which controller output has been captured by this case. Use the same control for other successors
+                    BF controlCaptured = possibleNextControlsOverTheModel.ExistAbstract(varCubePostMotionState).ExistAbstract(varCubePostInput);
+                    remainingTransitions &= !controlCaptured;
+                    // BF_newDumpDot(*this,controlCaptured,NULL,"/tmp/controlCaptured.dot");
+                    // BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitionsAfterRemoval.dot");
+
+                    // BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitions.dot");
+                    // BF_newDumpDot(*this,safeTransition,NULL,"/tmp/safeTransition.dot");
+                    // BF_newDumpDot(*this,robotAllowedMoves,"PreMotionControlOutput PreMotionState","/tmp/robotAllowedMoves.dot");
+                    // BF_newDumpDot(*this,safetySys,NULL,"/tmp/safetySys.dot");
+                    // BF_newDumpDot(*this,possibleNextControlsOverTheModel,NULL,"/tmp/possibleNextControlsOverTheModel.dot");
+
+                    // TODO: we need to make sure to pick one post motion state that is losing.. 
+                    BF newCombination = determinize(possibleNextControlsOverTheModel,postMotionStateVars);
+                    // possibleNextControlsOverTheModel &= !newCombination;
+
+                    BF_newDumpDot(*this,newCombination,NULL,"/tmp/newCombination.dot");
+
+                    // Jump as much forward  in the liveness assumption list as possible ("stuttering avoidance")
+                    unsigned int nextLivenessAssumption = current.second.first;
+                    bool firstTry = true;
+                    while (((nextLivenessAssumption != current.second.first) | firstTry) && !((livenessAssumptions[nextLivenessAssumption] & newCombination).isFalse())) {
+                        nextLivenessAssumption  = (nextLivenessAssumption + 1) % livenessAssumptions.size();
+                        firstTry = false;
+                    }
+                    
+                    // We don't need the pre information from the point onwards anymore.
+                    newCombination = newCombination.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
+
+                    unsigned int tn;
+
+                    std::pair<size_t, std::pair<unsigned int, unsigned int> > target;
+
+                    target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(nextLivenessAssumption, current.second.second));
+
+                    if (lookupTableForPastStates.count(target)==0) {
+                        tn = lookupTableForPastStates[target] = bfsUsedInTheLookupTable.size();
+                        bfsUsedInTheLookupTable.push_back(newCombination);
+                        todoList.push_back(target);
+                    } else {
+                        tn = lookupTableForPastStates[target];
+                    }
+
+                    // Print
+                    if (first) {
+                        first = false;
+                    } else {
+                        outputStream << ", ";
+                    }
+                    outputStream << tn;
+
+                }
+            }
+
+            outputStream << "\n";
     }
+    }   
     }
 
 
@@ -250,10 +284,10 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
     void addDeadlocked(BF targetPositionCandidateSet, std::pair<size_t, std::pair<unsigned int, unsigned int> > current, std::vector<BF> &bfsUsedInTheLookupTable, std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > &lookupTableForPastStates, std::ostream &outputStream) {
     
+    BF_newDumpDot(*this,targetPositionCandidateSet,NULL,"/tmp/targetPositionCandidateSet.dot");
     BF newCombination = determinize(targetPositionCandidateSet, postVars) ;
-    
-    newCombination  = newCombination.ExistAbstract(varCubePreOutput).SwapVariables(varVectorPre,varVectorPost);
-    
+    BF_newDumpDot(*this,newCombination,NULL,"/tmp/newCombinationAddDeadocked.dot");
+    newCombination  = newCombination.ExistAbstract(varCubePreControllerOutput).SwapVariables(varVectorPre,varVectorPost);
     
     
     std::pair<size_t, std::pair<unsigned int, unsigned int> > target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(current.second.first, current.second.second));

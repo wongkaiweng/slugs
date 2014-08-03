@@ -161,6 +161,10 @@ public:
 
                 BF preStateAndNextInput = determinize(remainingTransitions,postInputVars);
                 BF preAndPostWithoutRobotMove = determinize(preStateAndNextInput,postControllerOutputVars);
+                
+                // Mark which input has been captured by this case
+                BF inputCaptured = preStateAndNextInput.ExistAbstract(varCubePostControllerOutput);
+                remainingTransitions &= !inputCaptured;
 
                 BF_newDumpDot(*this,preAndPostWithoutRobotMove,NULL,"/tmp/testing.dot");
 
@@ -169,7 +173,7 @@ public:
                 while (!(possibleNextStatesOverTheModel.isFalse())) {
 
                     BF newCombination = determinize(possibleNextStatesOverTheModel,postMotionStateVars);
-                    possibleNextStatesOverTheModel &= !thisCase;
+                    possibleNextStatesOverTheModel &= !newCombination;
 
                     // Jump as much forward  in the liveness guarantee list as possible ("stuttering avoidance")
                     unsigned int nextLivenessGuarantee = current.second;
@@ -179,10 +183,7 @@ public:
                         firstTry = false;
                     }
 
-                    // Mark which input has been captured by this case
-                    BF inputCaptured = preStateAndNextInput.ExistAbstract(varCubePostControllerOutput);
                     newCombination = newCombination.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
-                    remainingTransitions &= !inputCaptured;
 
                     // Search for newCombination
                     unsigned int tn;

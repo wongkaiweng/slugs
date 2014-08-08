@@ -1,5 +1,5 @@
-#ifndef __EXTENSION_EXPLICIT_COUNTERSTRATEGY_NONDETERMINISTIC_HPP
-#define __EXTENSION_EXPLICIT_COUNTERSTRATEGY_NONDETERMINISTIC_HPP
+#ifndef __EXTENSION_EXTRACT_COUNTERSTRATEGY_NONDETERMINISTIC_HPP
+#define __EXTENSION_EXTRACT_COUNTERSTRATEGY_NONDETERMINISTIC_HPP
 
 #include "gr1context.hpp"
 #include <string>
@@ -9,11 +9,7 @@
  */
 template<class T> class XExtractExplicitCounterStrategyNondeterministicMotion : public T {
 protected:
-    // New variables
-    std::string outputFilename;
-
     // Inherited stuff used
-    // using T::outputFilename;
     using T::mgr;
     using T::lineNumberCurrentlyRead;
     using T::addVariable;
@@ -52,21 +48,15 @@ protected:
     SlugsVectorOfVarBFs postControllerOutputVars{PostMotionControlOutput,this};
     SlugsVarCube varCubePostMotionState{PostMotionState,this};
     SlugsVarCube varCubePostControllerOutput{PostMotionControlOutput,this};
-    SlugsVarCube varCubePreMotionState{PreMotionControlOutput,this};
+    SlugsVarCube varCubePreMotionState{PreMotionState,this};
     SlugsVarCube varCubePreControllerOutput{PreMotionControlOutput,this};
 
     BF newLivenessAssumption;
+    BF failingPreAndPostConditions = mgr.constantFalse();
 
 public:
 
-    XExtractExplicitCounterStrategyNondeterministicMotion<T>(std::list<std::string> &filenames) : T(filenames) {
-        if (filenames.size()==1) {
-            outputFilename = "";
-        } else {
-            outputFilename = filenames.front();
-            filenames.pop_front();
-        }
-    }
+    XExtractExplicitCounterStrategyNondeterministicMotion<T>(std::list<std::string> &filenames) : T(filenames) {}
 
 /**
  * @brief Compute and print out (to stdout) an explicit-state counter strategy that is winning for
@@ -76,29 +66,6 @@ public:
  *        "winningPositions" have been filled by the synthesis algorithm with meaningful data.
  * @param outputStream - Where the strategy shall be printed to.
  */
-void execute() {
-        T::execute();
-        extractAutomaticallyGeneratedLivenessAssumption();
-        if (!realizable) {
-            if (outputFilename=="") {
-                computeAndPrintExplicitStateStrategy(std::cout);
-            } else {
-                std::ofstream of(outputFilename.c_str());
-                if (of.fail()) {
-                    SlugsException ex(false);
-                    ex << "Error: Could not open output file'" << outputFilename << "\n";
-                    throw ex;
-                }
-                computeAndPrintExplicitStateStrategy(of);
-                if (of.fail()) {
-                    SlugsException ex(false);
-                    ex << "Error: Writing to output file'" << outputFilename << "failed. \n";
-                    throw ex;
-                }
-                of.close();
-            }
-        }
-}
 void extractAutomaticallyGeneratedLivenessAssumption() {
     
     // Create a new liveness assumption that says that always eventually, if an action/pre-state
@@ -321,19 +288,20 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     
     // find the deadlock state's predecessor and store it..
     unsigned int stateNum = lookupTableForPastStates[current];
-    BF failingPreCommandsAndMotionStates = bfsUsedInTheLookupTable[stateNum].ExistAbstract(varCubePost).ExistAbstract(varCubePreInput);
 
     // BF_newDumpDot(*this,targetPositionCandidateSet,NULL,"/tmp/targetPositionCandidateSet.dot");
     BF newCombination = determinize(targetPositionCandidateSet, postVars) ;
     BF_newDumpDot(*this,newCombination,NULL,"/tmp/newCombinationAddDeadocked.dot");
-    newCombination  = newCombination.ExistAbstract(varCubePreControllerOutput).SwapVariables(varVectorPre,varVectorPost);
+    newCombination = newCombination.ExistAbstract(varCubePreControllerOutput).SwapVariables(varVectorPre,varVectorPost);
     
     
     std::pair<size_t, std::pair<unsigned int, unsigned int> > target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(current.second.first, current.second.second));
     unsigned int tn;
 
-    BF failingPostInputs = newCombination.ExistAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePost);
-    
+    BF failingPostInputs = newCombination.ExistAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePost).SwapVariables(varVectorPre,varVectorPost);
+    BF failingPreCommandsAndMotionStates = bfsUsedInTheLookupTable[stateNum].ExistAbstract(varCubePost).ExistAbstract(varCubePreInput);
+    failingPreAndPostConditions |= failingPostInputs & failingPreCommandsAndMotionStates;
+
     if (lookupTableForPastStates.count(target)==0) {
         tn = lookupTableForPastStates[target] = bfsUsedInTheLookupTable.size();
         bfsUsedInTheLookupTable.push_back(newCombination);   

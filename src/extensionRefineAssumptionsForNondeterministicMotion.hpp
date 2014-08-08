@@ -74,11 +74,13 @@ public:
             }
         }   
 
+        BF psi1 = mgr.constantFalse();
+        BF psi2 = mgr.constantFalse();
         while (!failingPreAndPostConditions.isFalse()){            
             BF_newDumpDot(*this,failingPreAndPostConditions,NULL,"/tmp/failingPreAndPostConditions.dot");
             if (!failingPreAndPostConditions.isFalse()){
-                BF psi1 = failingPreAndPostConditions.ExistAbstract(varCubePost);
-                BF psi2 = failingPreAndPostConditions.ExistAbstract(varCubePre);
+                psi1 = failingPreAndPostConditions.ExistAbstract(varCubePost);
+                psi2 = failingPreAndPostConditions.ExistAbstract(varCubePre);
                 safetyEnv &= psi1.Implies(!psi2);
                 safetySys &= psi2.Implies(!psi1.SwapVariables(varVectorPre,varVectorPost));            
             }

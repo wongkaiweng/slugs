@@ -20,8 +20,8 @@ protected:
     using T::variableNames;
     using T::variables;
     using T::variableTypes;
-    using T::varVectorPre;
-    using T::varVectorPost;
+    // using T::varVectorPre;
+    // using T::varVectorPost;
     using T::strategyDumpingData;
     using T::varCubePostInput;
     using T::winningPositions;
@@ -30,8 +30,8 @@ protected:
     using T::realizable;
     using T::determinize;
     using T::preVars;
-    using T::varCubePre;
-    using T::varCubePost;
+    // using T::varCubePre;
+    // using T::varCubePost;
 
     // Own variables local to this plugin
     BF robotBDD;
@@ -42,8 +42,13 @@ protected:
     // SlugsVectorOfVarBFs postInputVars{PostInput,this};
     SlugsVarCube varCubePostMotionState{PostMotionState,this};
     SlugsVarCube varCubePostControllerOutput{PostMotionControlOutput,this};
-    SlugsVarCube varCubePreMotionState{PreMotionState,this};
+    SlugsVarCube varCubePreMotionState
+    {PreMotionState,this};
     SlugsVarCube varCubePreControllerOutput{PreMotionControlOutput,this};
+    SlugsVarVector varVectorPre{Pre, this}; // needed because the PreMotionState gets left out in GR1Context
+    SlugsVarVector varVectorPost{Post, this};
+    SlugsVarCube varCubePre{Pre,this};
+    SlugsVarCube varCubePost{Post,this};
 
 public:
     static GR1Context* makeInstance(std::list<std::string> &filenames) {
@@ -160,7 +165,7 @@ public:
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
                         allowedTypes.insert(PreMotionState);
-                         // allowedTypes.insert(PreMotionControlOutput); -> Is not taken into account
+                        allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
                         allowedTypes.insert(PostMotionState);
@@ -319,9 +324,12 @@ public:
             if (!initSys.isTrue()) std::cerr << "Warning: Initialisation guarantees have been given although these are ignored in semantics-for-robotics mode! \n";
             result = initEnv.Implies(winningPositions.ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
         } else {
-            result = initEnv.Implies((winningPositions & initSys).ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
+            // result = initEnv.Implies((winningPositions & initSys).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
+            // result = winningPositions.ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
+            result = initEnv.Implies((winningPositions & initSys)).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         }
-        BF_newDumpDot(*this,initEnv.Implies(winningPositions),NULL,"/tmp/result0.dot");
+        BF_newDumpDot(*this,(winningPositions & initSys),NULL,"/tmp/winningAndInit.dot");
+        BF_newDumpDot(*this,(winningPositions & initSys).UnivAbstract(varCubePreMotionState),NULL,"/tmp/winningAndInitUnivAbstracted.dot");
         BF_newDumpDot(*this,result,NULL,"/tmp/result.dot");
 
         // Check if the result is well-defind. Might fail after an incorrect modification of the above algorithm
@@ -343,7 +351,7 @@ public:
         BF newLivenessAssumption = (!preMotionInputCombinationsThatCanChangeState) | prePostMotionStatesDifferent;
         livenessAssumptions.push_back(newLivenessAssumption);
         if (!(newLivenessAssumption.isTrue())) {
-            std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken at allows moving.\n";
+            std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
         }
         BF_newDumpDot(*this,newLivenessAssumption,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
 

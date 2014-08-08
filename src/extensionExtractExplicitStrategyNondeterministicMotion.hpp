@@ -7,7 +7,7 @@
 /**
  * An extension that triggers that a strategy is actually extracted.
  */
-template<class T, bool oneStepRecovery> class XExtractExplicitStrategyNondeterministicMotion : public T {
+template<class T> class XExtractExplicitStrategyNondeterministicMotion : public T {
 protected:
     // New variables
     std::string outputFilename;
@@ -30,10 +30,18 @@ protected:
     using T::varVectorPre;
     using T::varVectorPost;
     using T::varCubePostOutput;
+    using T::varCubePostControllerOutput;
     using T::determinize;
     using T::doesVariableInheritType;
+    using T::postInputVars;
+    using T::postOutputVars;
+    using T::postMotionStateVars;
+    using T::robotBDD;
 
-    XExtractExplicitStrategyNondeterministicMotion<T,oneStepRecovery>(std::list<std::string> &filenames): T(filenames) {}
+
+    SlugsVectorOfVarBFs postControllerOutputVars{PostMotionControlOutput,this};
+
+    XExtractExplicitStrategyNondeterministicMotion<T>(std::list<std::string> &filenames): T(filenames) {}
 
     void init(std::list<std::string> &filenames) {
         T::init(filenames);
@@ -92,7 +100,7 @@ public:
         std::list<std::pair<size_t, unsigned int> > todoList;
 
         // Prepare initial to-do list from the allowed initial states
-        BF todoInit = (oneStepRecovery)?(winningPositions & initSys):(winningPositions & initSys & initEnv);
+        BF todoInit = (winningPositions & initSys & initEnv);
         while (!(todoInit.isFalse())) {
             BF concreteState = determinize(todoInit,preVars);
             std::pair<size_t, unsigned int> lookup = std::pair<size_t, unsigned int>(concreteState.getHashCode(),0);
@@ -151,17 +159,14 @@ public:
 
             // Compute successors for all variables that allow these
             currentPossibilities &= positionalStrategiesForTheIndividualGoals[current.second];
-            BF remainingTransitions =
-                    (oneStepRecovery)?
-                    currentPossibilities:
-                    (currentPossibilities & safetyEnv);
+            BF remainingTransitions = (currentPossibilities & safetyEnv);
 
             // Switching goals
             while (!(remainingTransitions.isFalse())) {
 
                 BF preStateAndNextInput = determinize(remainingTransitions,postInputVars);
                 BF preAndPostWithoutRobotMove = determinize(preStateAndNextInput,postControllerOutputVars);
-                
+
                 // Mark which input has been captured by this case
                 BF inputCaptured = preStateAndNextInput.ExistAbstract(varCubePostControllerOutput);
                 remainingTransitions &= !inputCaptured;
@@ -211,7 +216,7 @@ public:
     }
 
     static GR1Context* makeInstance(std::list<std::string> &filenames) {
-        return new XExtractExplicitStrategyNondeterministicMotion<T,oneStepRecovery>(filenames);
+        return new XExtractExplicitStrategyNondeterministicMotion<T>(filenames);
     }
 };
 

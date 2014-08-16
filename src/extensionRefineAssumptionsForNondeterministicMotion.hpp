@@ -6,11 +6,7 @@
 #include <string>
 
 /**
- * This extension modifies the execute() function such that rather than synthesizing an implementation,
- * we search for a minimal CNF formula that represents safety assumptions such that for a realizable input specification,
- * the CNF obtained is a safety assumption set that is as-weak-as-possible, but generalizes the one in the input
- * specification, and still leads to a realizable synthesis problem if we replace the safety assumptions in the
- * input specification by our new CNF.
+ * This extension modifies the execute() function ...
  */
 template<class T> class XRefineAssumptionsForNondeterministicMotion : public T {
 protected:
@@ -32,6 +28,8 @@ protected:
     using T::extractAutomaticallyGeneratedLivenessAssumption;
     using T::computeAndPrintExplicitStateStrategy;
     using T::failingPreAndPostConditions;
+    using T::foundCutPostConditions;
+    using T::candidateFailingPreConditions;
     using T::varCubePre;
     using T::varCubePost;
     using T::varVectorPre;
@@ -76,8 +74,9 @@ public:
 
         BF psi1 = mgr.constantFalse();
         BF psi2 = mgr.constantFalse();
-        while (!failingPreAndPostConditions.isFalse()){            
+        // while (!failingPreAndPostConditions.isFalse()){            
             BF_newDumpDot(*this,failingPreAndPostConditions,NULL,"/tmp/failingPreAndPostConditions.dot");
+            BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsBefore.dot");
             if (!failingPreAndPostConditions.isFalse()){
                 psi1 = failingPreAndPostConditions.ExistAbstract(varCubePost);
                 psi2 = failingPreAndPostConditions.ExistAbstract(varCubePre);
@@ -104,12 +103,17 @@ public:
                     of.close();
                 }
             }
-        }
-        // we're left with livelock -- the easy case: liveness refinement driven by the deadlock refinement
+        // }
+
+        BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsAfter.dot");
+        BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
+        // we're left with livelock -- the easy case: liveness refinement driven by the deadlock refinements found so far
         BF failingPostCommands = (psi1.SwapVariables(varVectorPre,varVectorPost) & robotBDD).ExistAbstract(varCubePostMotionState).ExistAbstract(varCubePre);
         BF PreMotionStates = (psi1.SwapVariables(varVectorPre,varVectorPost) & robotBDD).ExistAbstract(varCubePost);
 
-        // the hard case: liveness
+        // the general case: mark states for which the counterstrategy has post inputs that are NOT winning for player 1, and enumerate those inputs.
+        //   TODO: can do this post input quantification for the deadlock case also?
+        
 
 //         // Try to make the safety assumptions deal with as few variables as possible.
 //         BF currentAssumptions = safetyEnv;

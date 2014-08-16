@@ -58,6 +58,7 @@
 #include "extensionExtractExplicitCounterstrategyNondeterministicMotion.hpp"
 #include "extensionExtractSymbolicStrategy.hpp"
 #include "extensionExtractExplicitStrategyNondeterministicMotion.hpp"
+#include "extensionGetCounterstrategyForNondeterministicMotion.hpp"
 #include "extensionRefineAssumptionsForNondeterministicMotion.hpp"
 
 //===================================================================================
@@ -161,7 +162,7 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--nonDeterministicMotion", XNonDeterministicMotion<GR1Context,false>::makeInstance),
     OptionCombination("--nonDeterministicMotion --sysInitRoboticsSemantics", XNonDeterministicMotion<GR1Context,true>::makeInstance),
     OptionCombination("--strategyNonDeterministicMotion", XExtractExplicitStrategyNondeterministicMotion<XNonDeterministicMotion<GR1Context,false> >::makeInstance),
-    // OptionCombination("--counterStrategyNonDeterministicMotion", XGetCounterstrategyNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance),
+    OptionCombination("--counterStrategyNonDeterministicMotion", XGetCounterstrategyNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance),
     OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance)
     
 

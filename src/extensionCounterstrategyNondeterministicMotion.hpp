@@ -297,12 +297,12 @@ public:
 
                         // BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPaths.dot");
                         foundPaths = robotAllowedMoves.Implies(robotBDD & safetySys.Implies(foundPaths));
-                        BF gatheredResults = (safetyEnv & foundPaths.ExistAbstract(varCubePostMotionState)).UnivAbstract(varCubePostControllerOutput);
+                        BF gatheredResults = (safetyEnv & foundPaths).ExistAbstract(varCubePostMotionState).UnivAbstract(varCubePostControllerOutput);
                         // BF_newDumpDot(*this,gatheredResults.ExistAbstract(varCubePostInput),NULL,"/tmp/mu0.dot");
 
                         // Dump the paths that we just found into 'strategyDumpingData' - store the current goal
                         // with the BDD
-                        strategyDumpingData.push_back(boost::make_tuple(i,j,gatheredResults,foundPaths));
+                        strategyDumpingData.push_back(boost::make_tuple(i,j,gatheredResults,robotBDD & safetyEnv & foundPaths));
 
                         // Update the inner-most fixed point with the result of applying the enforcable predecessor operator
                         mu0.update(gatheredResults.ExistAbstract(varCubePostInput));
@@ -341,11 +341,11 @@ void addAutomaticallyGeneratedLivenessAssumption() {
     }
     BF preMotionInputCombinationsThatCanChangeState = (prePostMotionStatesDifferent & robotBDD).ExistAbstract(varCubePostMotionState);
     BF newLivenessAssumption = (!preMotionInputCombinationsThatCanChangeState) | prePostMotionStatesDifferent;
-    livenessAssumptions.push_back(newLivenessAssumption);
+    livenessAssumptions.push_back(newLivenessAssumption & robotBDD & prePostMotionStatesDifferent);
     if (!(newLivenessAssumption.isTrue())) {
         std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
     }
-    BF_newDumpDot(*this,newLivenessAssumption,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
+    BF_newDumpDot(*this,newLivenessAssumption & robotBDD,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
 
     // Make sure that there is at least one liveness assumption and one liveness guarantee
     // The synthesis algorithm might be unsound otherwise

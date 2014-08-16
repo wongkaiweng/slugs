@@ -349,7 +349,7 @@ public:
         }
         BF preMotionInputCombinationsThatCanChangeState = (prePostMotionStatesDifferent & robotBDD).ExistAbstract(varCubePostMotionState);
         BF newLivenessAssumption = (!preMotionInputCombinationsThatCanChangeState) | prePostMotionStatesDifferent;
-        livenessAssumptions.push_back(newLivenessAssumption);
+        livenessAssumptions.push_back(newLivenessAssumption & robotBDD & prePostMotionStatesDifferent);
         if (!(newLivenessAssumption.isTrue())) {
             std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
         }

@@ -1,0 +1,38 @@
+[INPUT]
+door
+
+[MOTION STATE OUTPUT]
+xbit0
+ybit0
+
+[MOTION CONTROLLER OUTPUT]
+vxbit
+vybit
+
+[OTHER OUTPUT]
+
+
+[ENV_INIT]
+! door
+& xbit0 ybit0
+
+[ENV_TRANS]
+| ! & ! xbit0 ! ybit0 ! door'
+| ! & xbit0 ybit0 ! door'
+#| ! & & & ! xbit0 ybit0 ! vxbit ! vybit ! door'
+#| ! & & & ! xbit0 ybit0 vxbit vybit ! door'
+
+[ENV_LIVENESS]
+! door
+#| ! & & & ! xbit0 ybit0 vxbit vybit ! door'
+
+[SYS_INIT]
+1
+
+[SYS_TRANS]
+| ! door' ! & ! xbit0' ! ybit0'
+| ! door' ! & xbit0' ybit0'
+
+[SYS_LIVENESS]
+& ! xbit0 ! ybit0
+& xbit0 ybit0

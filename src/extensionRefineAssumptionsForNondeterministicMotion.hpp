@@ -20,7 +20,7 @@ protected:
     using T::variableTypes;
     using T::safetyEnv;
     using T::safetySys;
-    // using T::livenessEnv;
+    using T::livenessAssumptions;
     using T::checkRealizability;
     using T::determinize;
     using T::mgr;
@@ -29,14 +29,20 @@ protected:
     using T::computeAndPrintExplicitStateStrategy;
     using T::failingPreAndPostConditions;
     using T::foundCutPostConditions;
+    using T::candidateWinningPreConditions;
     using T::candidateFailingPreConditions;
     using T::varCubePre;
     using T::varCubePost;
     using T::varVectorPre;
     using T::varVectorPost;
     using T::robotBDD;
+    using T::foundCutConditions;
+    using T::preVars;
 
+    SlugsVectorOfVarBFs preMotionStateVars{PreMotionState,this};
+    SlugsVectorOfVarBFs preInputVars{PreInput,this};
     SlugsVarCube varCubePostMotionState{PostMotionState,this};
+    SlugsVarCube varCubePreControllerOutput{PreMotionControlOutput,this};
 
 public:
 
@@ -72,18 +78,35 @@ public:
             }
         }   
 
+
+        std::cerr << "adding safety assumptions/guarantees and synthesizing counter-strategy\n";
         BF psi1 = mgr.constantFalse();
         BF psi2 = mgr.constantFalse();
-        // while (!failingPreAndPostConditions.isFalse()){            
-            BF_newDumpDot(*this,failingPreAndPostConditions,NULL,"/tmp/failingPreAndPostConditions.dot");
-            BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsBefore.dot");
+        int idx = 0;
+        while (!failingPreAndPostConditions.isFalse()){ // & idx<=10){
+            T::execute();
+            // std::stringstream fname;
+            // std::stringstream fname1;
+            // std::stringstream fname2;
+            // fname << "/tmp/failingPreAndPostConditions" << idx << ".dot";
+            // fname1 << "/tmp/safetySysBefore" << idx << ".dot";
+            // fname2 << "/tmp/safetyEnvBefore" << idx << ".dot";
+            // BF_newDumpDot(*this,failingPreAndPostConditions,NULL,fname.str());
+            // BF_newDumpDot(*this,safetySys,NULL,fname1.str());
+            // BF_newDumpDot(*this,safetyEnv,NULL,fname2.str());
+            // BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsBefore.dot");
+            idx++;
             if (!failingPreAndPostConditions.isFalse()){
                 psi1 = failingPreAndPostConditions.ExistAbstract(varCubePost);
                 psi2 = failingPreAndPostConditions.ExistAbstract(varCubePre);
                 safetyEnv &= psi1.Implies(!psi2);
-                safetySys &= psi2.Implies(!psi1.SwapVariables(varVectorPre,varVectorPost));            
+                // safetySys &= (!psi2).Implies(psi1.SwapVariables(varVectorPre,varVectorPost));            
+                std::stringstream fname3;
+                fname3 << "/tmp/addedSafetyEnv" << idx << ".dot";
+                BF_newDumpDot(*this,psi1.Implies(!psi2),NULL,fname3.str());
             }
 
+            failingPreAndPostConditions = mgr.constantFalse();
             if (!realizable) {
                 if (outputFilename=="") {
                     computeAndPrintExplicitStateStrategy(std::cout);
@@ -103,168 +126,85 @@ public:
                     of.close();
                 }
             }
-        // }
+        }
 
-        BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsAfter.dot");
-        BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
-        // we're left with livelock -- the easy case: liveness refinement driven by the deadlock refinements found so far
-        BF failingPostCommands = (psi1.SwapVariables(varVectorPre,varVectorPost) & robotBDD).ExistAbstract(varCubePostMotionState).ExistAbstract(varCubePre);
-        BF PreMotionStates = (psi1.SwapVariables(varVectorPre,varVectorPost) & robotBDD).ExistAbstract(varCubePost);
+        BF_newDumpDot(*this,safetySys,NULL,"/tmp/safetySysAfter.dot");
+        BF_newDumpDot(*this,safetyEnv,NULL,"/tmp/safetyEnvAfter.dot");
+
+        // BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsAfter.dot");
+        // BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
+        // livelock -- liveness refinement driven by the deadlock refinements found so far
+        // BF failingPostCommands = (psi1.SwapVariables(varVectorPre,varVectorPost) & robotBDD).ExistAbstract(varCubePostMotionState).ExistAbstract(varCubePre);
+        // BF PreMotionStates = (psi1.SwapVariables(varVectorPre,varVectorPost) & robotBDD).ExistAbstract(varCubePost);
 
         // the general case: mark states for which the counterstrategy has post inputs that are NOT winning for player 1, and enumerate those inputs.
         //   TODO: can do this post input quantification for the deadlock case also?
-        
+        if (!realizable) {
+        // if (false){
+            std::cerr << "adding liveness assumptions and synthesizing counter-strategy\n";
+            BF_newDumpDot(*this,candidateWinningPreConditions,NULL,"/tmp/candidateWinningPreConditions.dot");
+            for (auto it = foundCutConditions.begin();it!=foundCutConditions.end();it++) {
+                BF newLivenessAssumptions = (boost::get<1>(*it).ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost)).ExistAbstract(varCubePreControllerOutput);
+                std::stringstream ss1;
+                ss1 << "/tmp/newLivenessAssumptions" << boost::get<0>(*it) << ".dot";
+                BF_newDumpDot(*this,newLivenessAssumptions,NULL,ss1.str());
+                BF TODO = newLivenessAssumptions; 
+                int idx = 0;
+                while (!TODO.isFalse()){
+                    BF candidate = determinize(TODO,preInputVars);
+                    candidate = determinize(candidate,preMotionStateVars);
+                    TODO &= !candidate;
+                    int OKtoAdd = true;
+                    if (!((safetySys & candidate.SwapVariables(varVectorPre,varVectorPost)).isFalse())){ // if the candidate satisfies the system transition
+                        for (unsigned int i=0;i<livenessAssumptions.size();i++) {
+                            if (((!livenessAssumptions[i]) & candidate).isFalse()){ // if the new assumption is already in the list
+                                // livenessAssumptions[i] &= candidate; //strengthen existing livenesses if needed, but don't append
+                                OKtoAdd = false;
+                                break;
+                            }
+                            // if ((livenessAssumptions[i] & candidate).isFalse()){ // if the new assumption may falsfy the env
+                            //     OKtoAdd = false;
+                            //     break;
+                            // }
+                        }
+                    }
+                    else{
+                        OKtoAdd = false;
+                    }
+                    // std::stringstream ss2;
+                    // ss2 << "/tmp/newLivenessAssumptionsFalseSys" << boost::get<0>(*it) << ".dot";
+                    // BF_newDumpDot(*this,(safetySys & candidate.SwapVariables(varVectorPre,varVectorPost)),NULL,ss2.str());    
+                    if (OKtoAdd){
+                        livenessAssumptions.push_back(candidate);         
+                        // std::stringstream ss1;
+                        // ss1 << "/tmp/newLivenessAssumptions" << boost::get<0>(*it) << "index" << idx << ".dot";
+                        // BF_newDumpDot(*this,candidate,NULL,ss1.str());      
+                    }
+                }
+                // std::cerr << boost::get<0>(*it) << "\n";
+            }
+            BF_newDumpDot(*this,livenessAssumptions.back(),NULL,"/tmp/livenessAssumptionsLast.dot");
 
-//         // Try to make the safety assumptions deal with as few variables as possible.
-//         BF currentAssumptions = safetyEnv;
-//         std::vector<VariableType> variableTypesOfInterest;
-//         variableTypesOfInterest.push_back(PostInput);
-//         variableTypesOfInterest.push_back(PreOutput);
-//         variableTypesOfInterest.push_back(PreInput);
-//         for (auto it = variableTypesOfInterest.begin();it!=variableTypesOfInterest.end();it++) {
-//             for (unsigned int i=0;i<variables.size();i++) {
-//                 if (variableTypes[i]==*it) {
-//                     safetyEnv = currentAssumptions.ExistAbstractSingleVar(variables[i]);
-//                     checkRealizability();
-//                     if (realizable) {
-//                         currentAssumptions = safetyEnv;
-//                     }
-//                 }
-//             }
-//         }
+            if (outputFilename=="") {
+                computeAndPrintExplicitStateStrategy(std::cout);
+            } else {
+                std::ofstream of(outputFilename.c_str());
+                if (of.fail()) {
+                    SlugsException ex(false);
+                    ex << "Error: Could not open output file'" << outputFilename << "\n";
+                    throw ex;
+                }
+                computeAndPrintExplicitStateStrategy(of);
+                if (of.fail()) {
+                    SlugsException ex(false);
+                    ex << "Error: Writing to output file'" << outputFilename << "failed. \n";
+                    throw ex;
+                }
+                of.close();
+            }
+        }   
+        // livenessAssumptions.push_back(candidateWinningPreConditions);
 
-//         // Translate to CNF. Sort by size
-//         std::map<unsigned int,std::vector<std::pair<std::vector<int>,BF> > > clauses; // clauses as cube (-1,0,1) over *all* variables & corresponding BF
-//         while (!(currentAssumptions.isTrue())) {
-//             BF thisClause = determinize(!currentAssumptions,variables);
-
-//             std::vector<int> thisClauseInt;
-//             unsigned int elementsInThisClause = 0;
-//             for (unsigned int i=0;i<variables.size();i++) {
-//                 BF thisTry = thisClause.ExistAbstractSingleVar(variables[i]);
-//                 if ((thisTry & currentAssumptions).isFalse()) {
-//                     thisClauseInt.push_back(0);
-//                     thisClause = thisTry;
-//                 } else if ((thisClause & variables[i]).isFalse()) {
-//                     thisClauseInt.push_back(1);
-//                     elementsInThisClause++;
-//                 } else {
-//                     thisClauseInt.push_back(-1);
-//                     elementsInThisClause++;
-//                 }
-//             }
-//             clauses[elementsInThisClause].push_back(std::pair<std::vector<int>,BF>(thisClauseInt,!thisClause));
-//             currentAssumptions |= thisClause;
-//         }
-
-//         // Remove as many clauses from the list as possible, until the specification becomes unrealizable
-//         BF clausesFoundSoFar = mgr.constantTrue();
-//         std::set<std::vector<int> > clausesFoundSoFarInt;
-
-//         // Start with the longest clauses
-//         for (auto it = clauses.rbegin();it!=clauses.rend();it++) {
-//             for (auto it2 = it->second.begin();it2!=it->second.end();it2++) {
-
-//                 // First: Compute the impact of the rest of the clauses
-//                 BF restOfTheClauses = mgr.constantTrue();
-//                 for (auto it3 = it2+1;it3!=it->second.end();it3++) {
-//                     restOfTheClauses &= it3->second;
-//                 }
-//                 auto it3 = it;
-//                 it3++;
-//                 for (;it3!=clauses.rend();it3++) {
-//                     for (auto it4 = it3->second.begin();it4!=it3->second.end();it4++) {
-//                         restOfTheClauses &= it4->second;
-//                     }
-//                 }
-
-//                 // Then see if we achieve realizability only with the clauses that we previously found to be essential and
-//                 // the remaining clauses
-//                 safetyEnv = restOfTheClauses & clausesFoundSoFar;
-//                 checkRealizability();
-//                 if (realizable) {
-//                     it2->second = mgr.constantTrue();
-//                 } else {
-//                     clausesFoundSoFar &= it2->second;
-//                     clausesFoundSoFarInt.insert(it2->first);
-//                 }
-//             }
-//         }
-
-//         // Remove literals from the clauses whenever they are redundant. They are redundant if the
-//         // overall assumptions do not change when removing a literal
-//         std::set<std::vector<int> > clausesFoundSoFarIntAfterFiltering;
-//         BF clausesSoFar = mgr.constantTrue();
-//         while (clausesFoundSoFarInt.size()>0) {
-//             std::vector<int> thisClause = *(clausesFoundSoFarInt.begin());
-//             clausesFoundSoFarInt.erase(clausesFoundSoFarInt.begin());
-
-//             // Compute BF for the rest of the clauses
-//             BF nextClauses = mgr.constantTrue();
-//             for (auto it = clausesFoundSoFarInt.begin();it!=clausesFoundSoFarInt.end();it++) {
-//                 BF thisClauseBF = mgr.constantFalse();
-//                 for (unsigned int i=0;i<variables.size();i++) {
-//                     if (thisClause[i]>0) {
-//                         thisClauseBF |= variables[i];
-//                     } else if (thisClause[i]<0) {
-//                         thisClauseBF |= !variables[i];
-//                     }
-//                 }
-//                 nextClauses &= thisClauseBF;
-//             }
-
-//             // Go over the literals
-//             std::vector<int> filteredLiterals;
-//             BF committedLiterals = mgr.constantFalse();
-//             for (unsigned int i=0;i<variables.size();i++) {
-//                 BF restOfClause = committedLiterals;
-//                 for (unsigned int j=i+1;j<variables.size();j++) {
-//                     if (thisClause[j]>0) {
-//                         restOfClause |= variables[j];
-//                     } else if (thisClause[j]<0) {
-//                         restOfClause |= !variables[j];
-//                     }
-//                 }
-
-//                 // Check if this literal is needed
-//                 BF literal;
-//                 if (thisClause[i]>0) {
-//                     literal = variables[i];
-//                 } else {
-//                     literal = !variables[i];
-//                 }
-
-//                 if ((clausesSoFar & nextClauses & restOfClause) == (clausesSoFar & nextClauses & (restOfClause | literal))) {
-//                     filteredLiterals.push_back(0);
-//                 } else {
-//                     committedLiterals |= literal;
-//                     filteredLiterals.push_back(thisClause[i]);
-//                 }
-//             }
-//             clausesSoFar &= committedLiterals;
-//             clausesFoundSoFarIntAfterFiltering.insert(filteredLiterals);
-//         }
-
-
-//         // Print the final set of clauses to stdout
-//         std::cout << "# Simplified safety assumption CNF clauses:\n";
-//         for (auto it = clausesFoundSoFarIntAfterFiltering.begin();it!=clausesFoundSoFarIntAfterFiltering.end();it++) {
-//             for (unsigned int i=0;i<variables.size();i++) {
-//                 if ((*it)[i]!=0) {
-//                     if ((*it)[i]<0) {
-//                         std::cout << "!";
-//                     }
-//                     std::cout << variableNames[i] << " ";
-//                 }
-//             }
-//             std::cout << "\n";
-//         }
-//         std::cout << "# End of list\n";
-// #ifndef NDEBUG
-//         safetyEnv = clausesFoundSoFar;
-//         checkRealizability();
-//         if (!realizable) throw "Internal Error: The specification after simplification should be realizable.";
-// #endif
     }
 
     static GR1Context* makeInstance(std::list<std::string> &filenames) {

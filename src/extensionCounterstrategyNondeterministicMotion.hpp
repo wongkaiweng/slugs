@@ -40,7 +40,7 @@ protected:
     // using T::varCubePre;
     // using T::varCubePost;
 
-    std::vector<boost::tuple<unsigned int, unsigned int,BF,BF> > strategyDumpingData;
+    std::vector<boost::tuple<unsigned int, unsigned int,BF> > strategyDumpingData;
 
     // Own variables local to this plugin
     BF robotBDD;
@@ -185,7 +185,7 @@ public:
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
                         allowedTypes.insert(PreMotionState);
-                         // allowedTypes.insert(PreMotionControlOutput); -> Is not taken into account
+                        allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
                         livenessAssumptions.push_back(parseBooleanFormula(currentLine,allowedTypes));
@@ -257,7 +257,7 @@ public:
         // greatest fixed point. Since we don't know which one is the last one, we store them in every iteration,
         // so that after the last iteration, we obtained the necessary data. Before any new iteration, we need to
         // store the old date so that it can be discarded if needed
-        std::vector<boost::tuple<unsigned int, unsigned int,BF,BF> > strategyDumpingDataOld = strategyDumpingData;
+        std::vector<boost::tuple<unsigned int, unsigned int,BF> > strategyDumpingDataOld = strategyDumpingData;
 
         // Iterate over all of the liveness guarantees. Put the results into the variable 'nextContraintsForGoals' for every
         // goal. Then, after we have iterated over the goals, we can update mu2.
@@ -295,14 +295,12 @@ public:
                         // Compute a set of paths that are safe to take - used for the enforceable predecessor operator ('cox')
                         foundPaths = livetransitions & (mu0.getValue().SwapVariables(varVectorPre,varVectorPost) | (livenessAssumptions[i]));
 
-                        // BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPaths.dot");
                         foundPaths = robotAllowedMoves.Implies(robotBDD & safetySys.Implies(foundPaths));
                         BF gatheredResults = (safetyEnv & foundPaths).ExistAbstract(varCubePostMotionState).UnivAbstract(varCubePostControllerOutput);
-                        // BF_newDumpDot(*this,gatheredResults.ExistAbstract(varCubePostInput),NULL,"/tmp/mu0.dot");
-
+                        
                         // Dump the paths that we just found into 'strategyDumpingData' - store the current goal
                         // with the BDD
-                        strategyDumpingData.push_back(boost::make_tuple(i,j,gatheredResults,robotBDD & safetyEnv & foundPaths));
+                        strategyDumpingData.push_back(boost::make_tuple(i,j,robotBDD & safetyEnv & foundPaths));
 
                         // Update the inner-most fixed point with the result of applying the enforcable predecessor operator
                         mu0.update(gatheredResults.ExistAbstract(varCubePostInput));
@@ -341,11 +339,11 @@ void addAutomaticallyGeneratedLivenessAssumption() {
     }
     BF preMotionInputCombinationsThatCanChangeState = (prePostMotionStatesDifferent & robotBDD).ExistAbstract(varCubePostMotionState);
     BF newLivenessAssumption = (!preMotionInputCombinationsThatCanChangeState) | prePostMotionStatesDifferent;
-    livenessAssumptions.push_back(newLivenessAssumption & robotBDD & prePostMotionStatesDifferent);
+    livenessAssumptions.push_back(newLivenessAssumption);
     if (!(newLivenessAssumption.isTrue())) {
         std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
     }
-    BF_newDumpDot(*this,newLivenessAssumption & robotBDD,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
+    BF_newDumpDot(*this,newLivenessAssumption,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
 
     // Make sure that there is at least one liveness assumption and one liveness guarantee
     // The synthesis algorithm might be unsound otherwise
@@ -364,10 +362,7 @@ void checkRealizability() {
     if (specialRoboticsSemantics) {
         result = (initEnv & initSys & winningPositions.UnivAbstract(varCubePreMotionState)).ExistAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
     } else {
-        // result = (initEnv & (initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
-        // result = winningPositions.ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
-        result = (initEnv & (initSys.Implies(winningPositions))).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
-        // result = mgr.constantTrue();
+        result = (initEnv & initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
     }
 
     // Check if the result is well-defind. Might fail after an incorrect modification of the above algorithm

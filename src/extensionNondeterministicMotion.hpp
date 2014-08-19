@@ -185,7 +185,7 @@ public:
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
                         allowedTypes.insert(PreMotionState);
-                         // allowedTypes.insert(PreMotionControlOutput); -> Is not taken into account
+                        allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
                         livenessAssumptions.push_back(parseBooleanFormula(currentLine,allowedTypes));
@@ -322,15 +322,12 @@ public:
         BF result;
         if (initSpecialRoboticsSemantics) {
             if (!initSys.isTrue()) std::cerr << "Warning: Initialisation guarantees have been given although these are ignored in semantics-for-robotics mode! \n";
-            result = initEnv.Implies(winningPositions.ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
+            result = initEnv.Implies(winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         } else {
-            // result = initEnv.Implies((winningPositions & initSys).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput)).UnivAbstract(varCubePreInput);
-            // result = winningPositions.ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
-            result = initEnv.Implies((winningPositions & initSys)).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
+            result = initEnv.Implies(winningPositions & initSys).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         }
-        BF_newDumpDot(*this,(winningPositions & initSys),NULL,"/tmp/winningAndInit.dot");
-        BF_newDumpDot(*this,(winningPositions & initSys).UnivAbstract(varCubePreMotionState),NULL,"/tmp/winningAndInitUnivAbstracted.dot");
-        BF_newDumpDot(*this,result,NULL,"/tmp/result.dot");
+        // BF_newDumpDot(*this,(winningPositions & initSys),NULL,"/tmp/winningAndInit.dot");
+        // BF_newDumpDot(*this,result,NULL,"/tmp/result.dot");
 
         // Check if the result is well-defind. Might fail after an incorrect modification of the above algorithm
         if (!result.isConstant()) throw "Internal error: Could not establish realizability/unrealizability of the specification.";
@@ -349,7 +346,7 @@ public:
         }
         BF preMotionInputCombinationsThatCanChangeState = (prePostMotionStatesDifferent & robotBDD).ExistAbstract(varCubePostMotionState);
         BF newLivenessAssumption = (!preMotionInputCombinationsThatCanChangeState) | prePostMotionStatesDifferent;
-        livenessAssumptions.push_back(newLivenessAssumption & robotBDD & prePostMotionStatesDifferent);
+        livenessAssumptions.push_back(newLivenessAssumption);// & robotBDD & prePostMotionStatesDifferent);
         if (!(newLivenessAssumption.isTrue())) {
             std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
         }
@@ -360,7 +357,7 @@ public:
         if (livenessGuarantees.size()==0) livenessGuarantees.push_back(mgr.constantTrue());
         if (livenessAssumptions.size()==0) livenessAssumptions.push_back(mgr.constantTrue());
 
-        BF_newDumpDot(*this,robotBDD,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/sometestbdd.dot");
+        BF_newDumpDot(*this,robotBDD,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/robotBDD.dot");
     }
 
     // void addSafetyAssumption() {

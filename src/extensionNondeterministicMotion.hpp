@@ -321,8 +321,10 @@ public:
         // BF robotInit = robotBDD.ExistAbstract(varCubePost);
         BF result;
         if (initSpecialRoboticsSemantics) {
-            if (!initSys.isTrue()) std::cerr << "Warning: Initialisation guarantees have been given although these are ignored in semantics-for-robotics mode! \n";
-            result = initEnv.Implies(winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
+            // TODO: Support for special-robotics semantics
+            throw SlugsException(false,"Error: special robot init semantics not yet supported.\n");
+            // if (!initSys.isTrue()) std::cerr << "Warning: Initialisation guarantees have been given although these are ignored in semantics-for-robotics mode! \n";
+            // result = (initEnv & initSys).Implies(winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         } else {
             result = initEnv.Implies(winningPositions & initSys).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         }
@@ -346,11 +348,22 @@ public:
         }
         BF preMotionInputCombinationsThatCanChangeState = (prePostMotionStatesDifferent & robotBDD).ExistAbstract(varCubePostMotionState);
         BF newLivenessAssumption = (!preMotionInputCombinationsThatCanChangeState) | prePostMotionStatesDifferent;
-        livenessAssumptions.push_back(newLivenessAssumption);// & robotBDD & prePostMotionStatesDifferent);
-        if (!(newLivenessAssumption.isTrue())) {
-            std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
+        // before adding the assumption, check first that it is not somehow already satisfied.
+        bool doesNewLivenessExist = false;
+        for (unsigned int i=0;i<livenessAssumptions.size();i++) { 
+            if ((livenessAssumptions[i] & (!newLivenessAssumption)).isFalse()) {
+                doesNewLivenessExist = true;
+                std::cerr << "doesNewLivenessExist  " << doesNewLivenessExist << "\n";
+                break;
+            }
         }
-        BF_newDumpDot(*this,newLivenessAssumption,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
+        if (!doesNewLivenessExist) {
+            livenessAssumptions.push_back(newLivenessAssumption);
+            if (!(newLivenessAssumption.isTrue())) {
+                std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
+            }
+            BF_newDumpDot(*this,newLivenessAssumption,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
+        }
 
         // Make sure that there is at least one liveness assumption and one liveness guarantee
         // The synthesis algorithm might be unsound otherwise

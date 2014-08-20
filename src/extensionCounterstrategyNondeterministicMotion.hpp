@@ -295,12 +295,13 @@ public:
                         // Compute a set of paths that are safe to take - used for the enforceable predecessor operator ('cox')
                         foundPaths = livetransitions & (mu0.getValue().SwapVariables(varVectorPre,varVectorPost) | (livenessAssumptions[i]));
 
-                        foundPaths = robotAllowedMoves.Implies(robotBDD & safetySys.Implies(foundPaths));
-                        BF gatheredResults = (safetyEnv & foundPaths).ExistAbstract(varCubePostMotionState).UnivAbstract(varCubePostControllerOutput);
+                        foundPaths = safetyEnv & robotAllowedMoves.Implies(robotBDD & safetySys.Implies(foundPaths));
+                        BF gatheredResults = foundPaths.ExistAbstract(varCubePostMotionState).UnivAbstract(varCubePostControllerOutput);
                         
                         // Dump the paths that we just found into 'strategyDumpingData' - store the current goal
                         // with the BDD
-                        strategyDumpingData.push_back(boost::make_tuple(i,j,robotBDD & safetyEnv & foundPaths));
+                        // strategyDumpingData.push_back(boost::make_tuple(i,j,robotBDD & foundPaths));
+                        strategyDumpingData.push_back(boost::make_tuple(i,j,foundPaths));
 
                         // Update the inner-most fixed point with the result of applying the enforcable predecessor operator
                         mu0.update(gatheredResults.ExistAbstract(varCubePostInput));
@@ -339,11 +340,22 @@ void addAutomaticallyGeneratedLivenessAssumption() {
     }
     BF preMotionInputCombinationsThatCanChangeState = (prePostMotionStatesDifferent & robotBDD).ExistAbstract(varCubePostMotionState);
     BF newLivenessAssumption = (!preMotionInputCombinationsThatCanChangeState) | prePostMotionStatesDifferent;
-    livenessAssumptions.push_back(newLivenessAssumption);
-    if (!(newLivenessAssumption.isTrue())) {
-        std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
+    // before adding the assumption, check first that it is not somehow already satisfied.
+    bool doesNewLivenessExist = false;
+    for (unsigned int i=0;i<livenessAssumptions.size();i++) { 
+        if ((livenessAssumptions[i] & (!newLivenessAssumption)).isFalse()) {
+            doesNewLivenessExist = true;
+            // std::cerr << "doesNewLivenessExist  " << doesNewLivenessExist << "\n";
+            break;
+        }
     }
-    BF_newDumpDot(*this,newLivenessAssumption,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
+    if (!doesNewLivenessExist) {
+        livenessAssumptions.push_back(newLivenessAssumption);
+        if (!(newLivenessAssumption.isTrue())) {
+            std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
+        }
+        BF_newDumpDot(*this,newLivenessAssumption,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
+    }
 
     // Make sure that there is at least one liveness assumption and one liveness guarantee
     // The synthesis algorithm might be unsound otherwise
@@ -360,9 +372,15 @@ void checkRealizability() {
     // Check if for every possible environment initial position the system has a good system initial position
     BF result;
     if (specialRoboticsSemantics) {
-        result = (initEnv & initSys & winningPositions.UnivAbstract(varCubePreMotionState)).ExistAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
+        // TODO: Support for special-robotics semantics
+        throw SlugsException(false,"Error: special robot init semantics not yet supported.\n");
+        // result = (robotBDD & initEnv & initSys & winningPositions).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
     } else {
-        result = (initEnv & initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
+        BF robotAllowedPreMoves = robotBDD.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
+        result = (initEnv & initSys & winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
+        // result = (robotBDD & robotAllowedPreMoves & initEnv & initSys & winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
+        // result = (initEnv & initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
+        BF_newDumpDot(*this,result,NULL,"/tmp/resultCounterStrategy.dot");
     }
 
     // Check if the result is well-defind. Might fail after an incorrect modification of the above algorithm

@@ -25,7 +25,7 @@ protected:
     using T::determinize;
     using T::mgr;
     using T::variableNames;
-    using T::extractAutomaticallyGeneratedLivenessAssumption;
+    // using T::extractAutomaticallyGeneratedLivenessAssumption;
     using T::computeAndPrintExplicitStateStrategy;
     using T::failingPreAndPostConditions;
     using T::foundCutPostConditions;

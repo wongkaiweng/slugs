@@ -25,7 +25,7 @@ protected:
     using T::determinize;
     using T::mgr;
     using T::variableNames;
-    using T::extractAutomaticallyGeneratedLivenessAssumption;
+    // using T::extractAutomaticallyGeneratedLivenessAssumption;
     using T::computeAndPrintExplicitStateStrategy;
     using T::failingPreAndPostConditions;
     using T::foundCutPostConditions;
@@ -57,7 +57,6 @@ public:
 
     void execute() {
         T::execute();
-        extractAutomaticallyGeneratedLivenessAssumption();
         if (!realizable) {
             if (outputFilename=="") {
                 computeAndPrintExplicitStateStrategy(std::cout);
@@ -84,7 +83,6 @@ public:
         BF psi2 = mgr.constantFalse();
         int idx = 0;
         while (!failingPreAndPostConditions.isFalse()){ // & idx<=10){
-            T::execute();
             // std::stringstream fname;
             // std::stringstream fname1;
             // std::stringstream fname2;
@@ -100,13 +98,15 @@ public:
                 psi1 = failingPreAndPostConditions.ExistAbstract(varCubePost);
                 psi2 = failingPreAndPostConditions.ExistAbstract(varCubePre);
                 safetyEnv &= psi1.Implies(!psi2);
-                // safetySys &= (!psi2).Implies(psi1.SwapVariables(varVectorPre,varVectorPost));            
+                safetySys &= (!psi2).Implies(psi1.SwapVariables(varVectorPre,varVectorPost));
+
                 std::stringstream fname3;
                 fname3 << "/tmp/addedSafetyEnv" << idx << ".dot";
                 BF_newDumpDot(*this,psi1.Implies(!psi2),NULL,fname3.str());
             }
 
             failingPreAndPostConditions = mgr.constantFalse();
+            T::execute();
             if (!realizable) {
                 if (outputFilename=="") {
                     computeAndPrintExplicitStateStrategy(std::cout);
@@ -145,9 +145,11 @@ public:
             BF_newDumpDot(*this,candidateWinningPreConditions,NULL,"/tmp/candidateWinningPreConditions.dot");
             for (auto it = foundCutConditions.begin();it!=foundCutConditions.end();it++) {
                 BF newLivenessAssumptions = (boost::get<1>(*it).ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost)).ExistAbstract(varCubePreControllerOutput);
-                std::stringstream ss1;
-                ss1 << "/tmp/newLivenessAssumptions" << boost::get<0>(*it) << ".dot";
-                BF_newDumpDot(*this,newLivenessAssumptions,NULL,ss1.str());
+                
+                std::stringstream fname;
+                fname << "/tmp/newLivenessAssumptions" << boost::get<0>(*it) << ".dot";
+                BF_newDumpDot(*this,newLivenessAssumptions,NULL,fname.str());
+                
                 BF TODO = newLivenessAssumptions; 
                 int idx = 0;
                 while (!TODO.isFalse()){
@@ -157,7 +159,7 @@ public:
                     int OKtoAdd = true;
                     if (!((safetySys & candidate.SwapVariables(varVectorPre,varVectorPost)).isFalse())){ // if the candidate satisfies the system transition
                         for (unsigned int i=0;i<livenessAssumptions.size();i++) {
-                            if (((!livenessAssumptions[i]) & candidate).isFalse()){ // if the new assumption is already in the list
+                            if ((livenessAssumptions[i] & (!candidate)).isFalse()){ // if the new assumption is already in the list
                                 // livenessAssumptions[i] &= candidate; //strengthen existing livenesses if needed, but don't append
                                 OKtoAdd = false;
                                 break;
@@ -171,36 +173,40 @@ public:
                     else{
                         OKtoAdd = false;
                     }
-                    // std::stringstream ss2;
-                    // ss2 << "/tmp/newLivenessAssumptionsFalseSys" << boost::get<0>(*it) << ".dot";
-                    // BF_newDumpDot(*this,(safetySys & candidate.SwapVariables(varVectorPre,varVectorPost)),NULL,ss2.str());    
+                    // std::stringstream fname;
+                    // fname << "/tmp/newLivenessAssumptionsFalseSys" << boost::get<0>(*it) << ".dot";
+                    // BF_newDumpDot(*this,(safetySys & candidate.SwapVariables(varVectorPre,varVectorPost)),NULL,fname.str());    
                     if (OKtoAdd){
-                        livenessAssumptions.push_back(candidate);         
-                        // std::stringstream ss1;
-                        // ss1 << "/tmp/newLivenessAssumptions" << boost::get<0>(*it) << "index" << idx << ".dot";
-                        // BF_newDumpDot(*this,candidate,NULL,ss1.str());      
+                        livenessAssumptions.push_back(candidate);    
+                             
+                        std::stringstream fname;
+                        fname << "/tmp/newLivenessAssumptions" << boost::get<0>(*it) << "index" << idx << ".dot";
+                        BF_newDumpDot(*this,candidate,NULL,fname.str());      
                     }
                 }
                 // std::cerr << boost::get<0>(*it) << "\n";
             }
             BF_newDumpDot(*this,livenessAssumptions.back(),NULL,"/tmp/livenessAssumptionsLast.dot");
 
-            if (outputFilename=="") {
-                computeAndPrintExplicitStateStrategy(std::cout);
-            } else {
-                std::ofstream of(outputFilename.c_str());
-                if (of.fail()) {
-                    SlugsException ex(false);
-                    ex << "Error: Could not open output file'" << outputFilename << "\n";
-                    throw ex;
+            T::execute();
+            if (!realizable) {
+                if (outputFilename=="") {
+                    computeAndPrintExplicitStateStrategy(std::cout);
+                } else {
+                    std::ofstream of(outputFilename.c_str());
+                    if (of.fail()) {
+                        SlugsException ex(false);
+                        ex << "Error: Could not open output file'" << outputFilename << "\n";
+                        throw ex;
+                    }
+                    computeAndPrintExplicitStateStrategy(of);
+                    if (of.fail()) {
+                        SlugsException ex(false);
+                        ex << "Error: Writing to output file'" << outputFilename << "failed. \n";
+                        throw ex;
+                    }
+                    of.close();
                 }
-                computeAndPrintExplicitStateStrategy(of);
-                if (of.fail()) {
-                    SlugsException ex(false);
-                    ex << "Error: Writing to output file'" << outputFilename << "failed. \n";
-                    throw ex;
-                }
-                of.close();
             }
         }   
         // livenessAssumptions.push_back(candidateWinningPreConditions);

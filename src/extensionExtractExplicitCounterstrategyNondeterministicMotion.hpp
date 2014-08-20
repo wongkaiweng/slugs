@@ -72,18 +72,6 @@ public:
  *        "winningPositions" have been filled by the synthesis algorithm with meaningful data.
  * @param outputStream - Where the strategy shall be printed to.
  */
-void extractAutomaticallyGeneratedLivenessAssumption() {
-    
-    // Create a new liveness assumption that says that always eventually, if an action/pre-state
-    // combination may lead to a different position, then it is taken
-    BF prePostMotionStatesDifferent = mgr.constantFalse();
-    for (uint i=0;i<preMotionStateVars.size();i++) {
-        prePostMotionStatesDifferent |= (preMotionStateVars[i] ^ postMotionStateVars[i]);
-    }
-    BF preMotionInputCombinationsThatCanChangeState = (prePostMotionStatesDifferent & robotBDD).ExistAbstract(varCubePostMotionState);
-    newLivenessAssumption = (!preMotionInputCombinationsThatCanChangeState) | prePostMotionStatesDifferent;
-    livenessAssumptions.push_back(newLivenessAssumption);
-}
     
 void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
@@ -102,6 +90,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     // Prepare positional strategies for the individual goals
     std::vector<std::vector<BF> > positionalStrategiesForTheIndividualGoals(livenessAssumptions.size());
     for (unsigned int i=0;i<livenessAssumptions.size();i++) {
+        std::cerr << i << "\n";
         BF casesCovered = mgr.constantFalse();
         std::vector<BF> strategyAllPost(livenessGuarantees.size()+1);
         for (unsigned int j=0;j<livenessGuarantees.size()+1;j++) {
@@ -116,17 +105,21 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
                 strategyAllPost[boost::get<1>(*it)] |= newCases & boost::get<2>(*it);
                 casesCovered |= newCases;
                 // BF_newDumpDot(*this,strategyAllPost[boost::get<1>(*it)],NULL,"/tmp/strategyAllPost.dot"); 
+                // std::stringstream fname;
+                // fname << "/tmp/strategyAllPost" << i << "by" << boost::get<1>(*it) << ".dot";
+                // BF_newDumpDot(*this,strategyAllPost[boost::get<1>(*it)],NULL,fname.str());
             }
         }
         positionalStrategiesForTheIndividualGoals[i] = strategyAllPost;
     }
-    
+
     // Prepare initial to-do list from the allowed initial states. Select a single initial input valuation.
 
     // TODO: Support for non-special-robotics semantics
     BF robotAllowedPreMoves = robotBDD.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
-    BF todoInit = (winningPositions & initEnv & initSys & robotBDD & robotAllowedPreMoves);
+    BF todoInit = (winningPositions & initEnv & initSys);// & robotBDD & robotAllowedPreMoves);
     BF_newDumpDot(*this,initSys,NULL,"/tmp/initSys.dot"); 
+    BF_newDumpDot(*this,todoInit,NULL,"/tmp/todoInit.dot");
     while (!(todoInit.isFalse())) {
         BF concreteState = determinize(todoInit,preVars);
         
@@ -154,6 +147,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         todoList.pop_front();
         unsigned int stateNum = lookupTableForPastStates[current];
         BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];
+        std::cerr << "stateNum " << stateNum << "\n";
 
         BF robotAllowedMoves = mgr.constantTrue();
         // Print state information
@@ -174,14 +168,15 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         outputStream << ">\n\tWith successors : ";
         first = true;
 
-        // std::stringstream ss5;
-        // ss5 << "/tmp/currentPossibilities" << stateNum << ".dot";
-        // BF_newDumpDot(*this,currentPossibilities,NULL,ss5.str());
+        BF_newDumpDot(*this,currentPossibilities,NULL,"/tmp/currentPossibilities.dot");
+        // std::stringstream fname;
+        // fname << "/tmp/currentPossibilities" << stateNum << ".dot";
+        // BF_newDumpDot(*this,currentPossibilities,NULL,fname.str());
 
         // Can we enforce a deadlock?
         BF possibilitiesAndRobotBDD = safetyEnv & currentPossibilities & robotBDD;
         BF deadlockInput = mgr.constantTrue();
-        // int indx = 0;
+        int indx = 0;
         bool deadlockFound = false;
         while (!possibilitiesAndRobotBDD.isFalse()) {
             BF possibilitiesForThisControl = determinize(possibilitiesAndRobotBDD, postControllerOutputVars);
@@ -195,14 +190,17 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
             // std::stringstream ss1;
             // ss1 << "/tmp/deadlockInput" << stateNum << "by" << indx << ".dot";
             // BF_newDumpDot(*this,deadlockInput,NULL,ss1.str());
-            // indx++;
+            // std::cerr << "stateNum" << stateNum << "indx" << indx << "\n";
+            indx++;
         }
         if (deadlockFound) {
             addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream);
         } else {
-
+            
             // No deadlock in sight -> Jump to a different liveness guarantee if necessary.
-            while ((currentPossibilities & positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second])==mgr.constantFalse()) current.second.second = (current.second.second + 1) % livenessGuarantees.size();
+            while ((currentPossibilities & positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second])==mgr.constantFalse()){
+                current.second.second = (current.second.second + 1) % livenessGuarantees.size();
+            } 
             currentPossibilities &= positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second];
             assert(currentPossibilities != mgr.constantFalse());
             BF remainingTransitions = currentPossibilities;
@@ -222,9 +220,9 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
             remainingTransitions = determinize(robotBDD & safetyEnv & remainingTransitions & robotAllowedMoves,postInputVars);
 
             // Switching goals
-            // int indx = 0;
+            int indx = 0;
             while (!(remainingTransitions & robotBDD & safetySys).isFalse()) {
-                // std::cerr << indx << "\n";
+                std::cerr << indx << "\n";
                 BF safeTransition = remainingTransitions & safetySys;
                 BF possibleNextControlsOverTheModel = determinize(safeTransition, postControllerOutputVars);
 
@@ -237,14 +235,12 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
                 remainingTransitions &= !controlCaptured;
 
                 // pick a concrete postMotionState             
-                //TODO: the special liveness requirement really belongs in the game solving insead of re-including it here
-                // BF newCombination = determinize(newLivenessAssumption & safetyEnv & possibleNextControlsOverTheModel, postMotionStateVars);
                 BF newCombination = determinize(safetyEnv & possibleNextControlsOverTheModel, postMotionStateVars);
 
                 // std::stringstream ss3;
                 // ss3 << "/tmp/newCombination" << stateNum << "by" << indx << ".dot";
                 // BF_newDumpDot(*this,newCombination,NULL,ss3.str());
-                // indx++;
+                indx++;
 
                 // Jump as much forward  in the liveness assumption list as possible ("stuttering avoidance")
                 unsigned int nextLivenessAssumption = current.second.first;

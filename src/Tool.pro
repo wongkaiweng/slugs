@@ -29,7 +29,12 @@ HEADERS += BFAbstractionLibrary/BF.h BFAbstractionLibrary/BFCudd.h gr1context.hp
     extensionPermissiveExplicitStrategy.hpp \
     extensionIncompleteInformationEstimatorSynthesis.hpp \
     extensionNondeterministicMotion.hpp \
-    extensionExtractSymbolicStrategy.hpp
+    extensionExtractSymbolicStrategy.hpp \
+    extensionCounterstrategyNondeterministicMotion.hpp \
+    extensionExtractExplicitCounterstrategyNondeterministicMotion.hpp \
+    extensionExtractExplicitStrategyNondeterministicMotion.hpp \
+    extensionGetCounterstrategyForNondeterministicMotion.hpp \
+    extensionRefineAssumptionsForNondeterministicMotion.hpp
 
 SOURCES += main.cpp BFAbstractionLibrary/bddDump.cpp BFAbstractionLibrary/BFCuddVarVector.cpp BFAbstractionLibrary/BFCudd.cpp BFAbstractionLibrary/BFCuddManager.cpp \
     BFAbstractionLibrary/BFCuddVarCube.cpp tools.cpp synthesisAlgorithm.cpp synthesisContextBasics.cpp variableManager.cpp \

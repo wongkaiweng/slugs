@@ -158,7 +158,7 @@ public:
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
                         allowedTypes.insert(PreMotionState);
-                         // allowedTypes.insert(PreMotionControlOutput); -> Is not taken into account
+                        allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         initSys &= parseBooleanFormula(currentLine,allowedTypes);
                     } else if (readMode==6) {

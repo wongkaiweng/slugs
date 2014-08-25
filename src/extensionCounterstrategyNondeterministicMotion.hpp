@@ -23,8 +23,6 @@ protected:
     using T::variableTypes;
     using T::livenessGuarantees;
     using T::livenessAssumptions;
-    // using T::varVectorPre;
-    // using T::varVectorPost;
     using T::varCubePostOutput;
     using T::varCubePostInput;
     using T::varCubePreOutput;
@@ -158,7 +156,7 @@ public:
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
                         allowedTypes.insert(PreMotionState);
-                         // allowedTypes.insert(PreMotionControlOutput); -> Is not taken into account
+                        allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         initSys &= parseBooleanFormula(currentLine,allowedTypes);
                     } else if (readMode==6) {
@@ -243,6 +241,7 @@ public:
     
  void computeWinningPositions() {
 
+    strategyDumpingData.clear();
     // Compute first which moves by the robot are actually allowed.
     BF robotAllowedMoves = robotBDD.ExistAbstract(varCubePostMotionState);
 
@@ -376,8 +375,8 @@ void checkRealizability() {
         throw SlugsException(false,"Error: special robot init semantics not yet supported.\n");
         // result = (robotBDD & initEnv & initSys & winningPositions).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
     } else {
-        BF robotAllowedPreMoves = robotBDD.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
-        result = (initEnv & initSys & winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
+        // BF robotAllowedPreMoves = robotBDD.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
+        result = (initEnv & initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
         // result = (robotBDD & robotAllowedPreMoves & initEnv & initSys & winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
         // result = (initEnv & initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
         BF_newDumpDot(*this,result,NULL,"/tmp/resultCounterStrategy.dot");

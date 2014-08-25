@@ -58,6 +58,7 @@
 #include "extensionExtractExplicitCounterstrategyNondeterministicMotion.hpp"
 #include "extensionExtractSymbolicStrategy.hpp"
 #include "extensionExtractExplicitStrategyNondeterministicMotion.hpp"
+#include "extensionInteractiveStrategyNondeterministicMotion.hpp"
 #include "extensionGetCounterstrategyForNondeterministicMotion.hpp"
 #include "extensionRefineAssumptionsForNondeterministicMotion.hpp"
 
@@ -88,6 +89,7 @@ const char *commandLineArguments[] = {
     "--nonDeterministicMotion","Computes a controller using an non-deterministic motion abstraction.",
     "--counterStrategyNonDeterministicMotion","Computes the environment counterstrategy using an non-deterministic motion abstraction.",
     "--strategyNonDeterministicMotion","Extract a strategy in the non-deterministic abstraction setting.",
+    "--interactiveNonDeterministicMotion","Opens an interactive shell after realizability checking for the non-deterministic abstraction setting.",
     "--environmentRefinementNonDeterministicMotion","Automatically compute new assumptions and guarantees to address unrealizability in specs involving non-deterministic robot abstractions"
 };
 
@@ -162,9 +164,11 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--nonDeterministicMotion", XNonDeterministicMotion<GR1Context,false>::makeInstance),
     OptionCombination("--nonDeterministicMotion --sysInitRoboticsSemantics", XNonDeterministicMotion<GR1Context,true>::makeInstance),
     OptionCombination("--strategyNonDeterministicMotion", XExtractExplicitStrategyNondeterministicMotion<XNonDeterministicMotion<GR1Context,false> >::makeInstance),
+    OptionCombination("--interactiveNonDeterministicMotion", XInteractiveStrategyNondeterministicMotion<XNonDeterministicMotion<GR1Context,false> >::makeInstance),
     OptionCombination("--counterStrategyNonDeterministicMotion", XGetCounterstrategyNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance),
     OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance)
-    
+    // OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XNonDeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> ,false> > >::makeInstance)
+        
 
 
     // TODO: Combination between BiasForAction and FixedPointRecycling is not supported yet but would make sense

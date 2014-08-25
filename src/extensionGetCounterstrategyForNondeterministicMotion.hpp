@@ -25,11 +25,8 @@ protected:
     using T::determinize;
     using T::mgr;
     using T::variableNames;
-    // using T::extractAutomaticallyGeneratedLivenessAssumption;
     using T::computeAndPrintExplicitStateStrategy;
     using T::failingPreAndPostConditions;
-    using T::foundCutPostConditions;
-    using T::candidateFailingPreConditions;
     using T::varCubePre;
     using T::varCubePost;
     using T::varVectorPre;

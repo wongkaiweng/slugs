@@ -100,7 +100,8 @@ public:
         std::list<std::pair<size_t, unsigned int> > todoList;
 
         // Prepare initial to-do list from the allowed initial states
-        BF todoInit = (winningPositions & initSys & initEnv);
+        BF todoInit = initEnv.Implies(winningPositions & initSys);
+        // BF todoInit = (winningPositions & initSys & initEnv);
         while (!(todoInit.isFalse())) {
             BF concreteState = determinize(todoInit,preVars);
             std::pair<size_t, unsigned int> lookup = std::pair<size_t, unsigned int>(concreteState.getHashCode(),0);

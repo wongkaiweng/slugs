@@ -98,10 +98,12 @@ public:
                 std::cout << "> ";
                 std::cout.flush();
                 std::string command = "";
-                while (command=="") {
-                    std::getline(std::cin,command);
-                    if (std::cin.eof()) return;
-                }
+                std::getline(std::cin,command);
+                if (std::cin.eof()) return;
+                // while (command=="") {
+                //     std::getline(std::cin,command);
+                //     if (std::cin.eof()) return;
+                // }
 
                 // Check the command
                 boost::trim(command);
@@ -263,7 +265,7 @@ public:
                 else if (command=="XMAKETRANS") {
                     std::cout << "\n"; // Get rid of the prompt
                     BF postInput = mgr.constantTrue();
-                    for (unsigned int i=0;i<variables.size();i++) {
+                    for (unsigned int i=0; i<variables.size(); i++) {
                         if (variableTypes[i]==PostInput) {
                             char c;
                             std::cin >> c;
@@ -286,14 +288,16 @@ public:
                         if (trans.isFalse()) {
                             std::cout << "ERROR (2)\n";
                         } else {
+
                             // Switching goals
                             BF newCombination = determinize(trans,postControllerOutputVars);
                             newCombination &= robotBDD;
                             if (newCombination.isFalse()) {
                                 std::cout << "ERROR (3)\n";
                             } else {
+                                BF_newDumpDot(*this,newCombination,NULL,"/tmp/newCombinationPossibilities.dot");
                                 newCombination = randomDeterminize(newCombination,postMotionStateVars);
-                                
+
                                 // Jump as much forward  in the liveness guarantee list as possible ("stuttering avoidance")
                                 unsigned int nextLivenessGuarantee = currentLivenessGuarantee;
                                 bool firstTry = true;
@@ -302,11 +306,14 @@ public:
                                     firstTry = false;
                                 }
 
+                                BF_newDumpDot(*this,newCombination,NULL,"/tmp/newCombination.dot");
+                                //sleep(30);
+
                                 currentLivenessGuarantee = nextLivenessGuarantee;
                                 currentPosition = newCombination.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
 
                                 // Print position
-                                for (unsigned int i=0;i<variables.size();i++) {
+                                for (unsigned int i=0; i<variables.size(); i++) {
                                     if (variableTypes[i]==PreInput) {
                                         if ((variables[i] & currentPosition).isFalse()) {
                                             std::cout << "0";
@@ -333,15 +340,15 @@ public:
                                         }
                                     }
                                 }
-                                // for (unsigned int i=0; i<variables.size(); i++) {
-                                //     if (variableTypes[i]==PreMotionControlOutput) {
-                                //         if ((variables[i] & currentPosition).isFalse()) {
-                                //             std::cout << "0";
-                                //         } else {
-                                //             std::cout << "1";
-                                //         }
-                                //     }
-                                // }
+                                for (unsigned int i=0; i<variables.size(); i++) {
+                                    if (variableTypes[i]==PreMotionControlOutput) {
+                                        if ((variables[i] & currentPosition).isFalse()) {
+                                            std::cout << "0";
+                                        } else {
+                                            std::cout << "1";
+                                        }
+                                    }
+                                }
                                 std::cout << "," << currentLivenessGuarantee << std::endl; // Flushes, too.
                             }
                         }

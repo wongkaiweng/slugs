@@ -323,10 +323,11 @@ public:
         if (initSpecialRoboticsSemantics) {
             // TODO: Support for special-robotics semantics
             throw SlugsException(false,"Error: special robot init semantics not yet supported.\n");
+            // result = initEnv.Implies((winningPositions & initSys).ExistAbstract(varCubePreOutput)).UnivAbstract(varCubePreInput);
             // if (!initSys.isTrue()) std::cerr << "Warning: Initialisation guarantees have been given although these are ignored in semantics-for-robotics mode! \n";
             // result = (initEnv & initSys).Implies(winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         } else {
-            result = initEnv.Implies(winningPositions & initSys).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
+            result = initEnv.Implies(winningPositions & initSys).ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         }
         // BF_newDumpDot(*this,(winningPositions & initSys),NULL,"/tmp/winningAndInit.dot");
         // BF_newDumpDot(*this,result,NULL,"/tmp/result.dot");

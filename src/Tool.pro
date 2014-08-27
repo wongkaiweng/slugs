@@ -33,6 +33,7 @@ HEADERS += BFAbstractionLibrary/BF.h BFAbstractionLibrary/BFCudd.h gr1context.hp
     extensionCounterstrategyNondeterministicMotion.hpp \
     extensionExtractExplicitCounterstrategyNondeterministicMotion.hpp \
     extensionExtractExplicitStrategyNondeterministicMotion.hpp \
+    extensionInteractiveStrategyNondeterministicMotion.hpp \
     extensionGetCounterstrategyForNondeterministicMotion.hpp \
     extensionRefineAssumptionsForNondeterministicMotion.hpp
 

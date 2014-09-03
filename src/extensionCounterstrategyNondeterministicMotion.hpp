@@ -376,7 +376,7 @@ void checkRealizability() {
         // result = (robotBDD & initEnv & initSys & winningPositions).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
     } else {
         // BF robotAllowedPreMoves = robotBDD.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
-        result = (initEnv & initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
+        result = (initEnv & initSys.Implies(winningPositions)).UnivAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
         // result = (robotBDD & robotAllowedPreMoves & initEnv & initSys & winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
         // result = (initEnv & initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
         BF_newDumpDot(*this,result,NULL,"/tmp/resultCounterStrategy.dot");

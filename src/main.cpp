@@ -61,6 +61,7 @@
 #include "extensionInteractiveStrategyNondeterministicMotion.hpp"
 #include "extensionGetCounterstrategyForNondeterministicMotion.hpp"
 #include "extensionRefineAssumptionsForNondeterministicMotion.hpp"
+#include "extensionNondeterministicMotionFastSlow.hpp"
 
 //===================================================================================
 // List of command line arguments
@@ -90,7 +91,8 @@ const char *commandLineArguments[] = {
     "--counterStrategyNonDeterministicMotion","Computes the environment counterstrategy using an non-deterministic motion abstraction.",
     "--strategyNonDeterministicMotion","Extract a strategy in the non-deterministic abstraction setting.",
     "--interactiveNonDeterministicMotion","Opens an interactive shell after realizability checking for the non-deterministic abstraction setting.",
-    "--environmentRefinementNonDeterministicMotion","Automatically compute new assumptions and guarantees to address unrealizability in specs involving non-deterministic robot abstractions"
+    "--environmentRefinementNonDeterministicMotion","Automatically compute new assumptions and guarantees to address unrealizability in specs involving non-deterministic robot abstractions",
+    "--nonDeterministicMotionFastSlow","Computes a controller using an non-deterministic motion abstraction using a fast-slow implementation."
 };
 
 //===================================================================================
@@ -166,8 +168,9 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--strategyNonDeterministicMotion", XExtractExplicitStrategyNondeterministicMotion<XNonDeterministicMotion<GR1Context,false> >::makeInstance),
     OptionCombination("--interactiveNonDeterministicMotion", XInteractiveStrategyNondeterministicMotion<XNonDeterministicMotion<GR1Context,false> >::makeInstance),
     OptionCombination("--counterStrategyNonDeterministicMotion", XGetCounterstrategyNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance),
-    OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance)
+    OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance),
     // OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XNonDeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> ,false> > >::makeInstance)
+    OptionCombination("--nonDeterministicMotionFastSlow", XNonDeterministicMotionFastSlow<GR1Context,false>::makeInstance)
         
 
 

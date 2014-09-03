@@ -119,7 +119,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     // BF todoInit = (winningPositions & initEnv & initSys);// & robotBDD.ExistAbstract(varCubePost));
     // non-special robot init semantics:
     BF todoInit = (initEnv & initSys.Implies(winningPositions)) & safetySys;// & robotBDD.ExistAbstract(varCubePost));
-
+    todoInit = determinize(todoInit,preVars); // choose one assignment from the winning set
     BF_newDumpDot(*this,initSys,NULL,"/tmp/initSys.dot"); 
     BF_newDumpDot(*this,todoInit,NULL,"/tmp/todoInit.dot");
     BF_newDumpDot(*this,safetyEnv,NULL,"/tmp/safetyEnv.dot");

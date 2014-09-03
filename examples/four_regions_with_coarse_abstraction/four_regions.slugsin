@@ -1,0 +1,38 @@
+[INPUT]
+s
+
+[MOTION STATE OUTPUT]
+r0
+r1
+r2
+r3
+
+[MOTION CONTROLLER OUTPUT]
+rc0
+rc1
+rc2
+rc3
+
+[OTHER OUTPUT]
+
+
+[ENV_INIT]
+1
+
+[ENV_TRANS]
+| ! | r2 r3 ! s'
+#| ! r1 ! s'
+
+[ENV_LIVENESS]
+! s
+
+[SYS_INIT]
+1
+
+[SYS_TRANS]
+| ! s' ! | r2' r3'
+#| ! s' ! r1'
+
+[SYS_LIVENESS]
+r0
+| r2 r3

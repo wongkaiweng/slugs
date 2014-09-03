@@ -1,9 +1,9 @@
-#ifndef __EXTENSION_NONTERMINISTIC_MOTION_HPP
-#define __EXTENSION_NONTERMINISTIC_MOTION_HPP
+#ifndef __EXTENSION_NONTERMINISTIC_MOTION_FS_HPP
+#define __EXTENSION_NONTERMINISTIC_MOTION_FS_HPP
 
 #include "gr1context.hpp"
 
-template<class T, bool initSpecialRoboticsSemantics> class XNonDeterministicMotion : public T {
+template<class T, bool initSpecialRoboticsSemantics> class XNonDeterministicMotionFastSlow : public T {
 protected:
 
     // Inherited stuff used
@@ -52,10 +52,10 @@ protected:
 
 public:
     static GR1Context* makeInstance(std::list<std::string> &filenames) {
-        return new XNonDeterministicMotion<T,initSpecialRoboticsSemantics>(filenames);
+        return new XNonDeterministicMotionFastSlow<T,initSpecialRoboticsSemantics>(filenames);
     }
 
-    XNonDeterministicMotion<T,initSpecialRoboticsSemantics>(std::list<std::string> &filenames): T(filenames) {}
+    XNonDeterministicMotionFastSlow<T,initSpecialRoboticsSemantics>(std::list<std::string> &filenames): T(filenames) {}
 
     /**
      * @brief init - Read input file(s)
@@ -215,7 +215,7 @@ public:
             varsBDDread.push_back(variables[i]);
         }
         for (int i=variables.size()-1;i>=0;i--) {
-            if (variableTypes[i]==PostMotionControlOutput)
+            if (variableTypes[i]==PreMotionControlOutput) // note that PRE is what's needed in fastslow
             varsBDDread.push_back(variables[i]);
         }
         for (int i=variables.size()-1;i>=0;i--) {
@@ -229,9 +229,6 @@ public:
     }
 
     void checkRealizability() {
-
-        // Compute first which moves by the robot are actually allowed.
-        BF robotAllowedMoves = robotBDD.ExistAbstract(varCubePostMotionState);
 
         // The greatest fixed point - called "Z" in the GR(1) synthesis paper
         BFFixedPoint nu2(mgr.constantTrue());
@@ -280,15 +277,8 @@ public:
                             // Compute a set of paths that are safe to take - used for the enforceable predecessor operator ('cox')
                             foundPaths = livetransitions | (nu0.getValue().SwapVariables(varVectorPre,varVectorPost) & !(livenessAssumptions[i]));
                             foundPaths &= safetySys;
-                            //BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPathsPreRobot.dot");
-                            // find foundPaths representation over all post states satisfying the robotBDD
-                            foundPaths = robotAllowedMoves & robotBDD.Implies(foundPaths).UnivAbstract(varCubePostMotionState);
-                            //BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPathsPostRobot.dot");
 
                             // Update the inner-most fixed point with the result of applying the enforcable predecessor operator
-                            // NB (JD): To get rid of unintended behaviors due to falsifying safetyEnv, can't we simply do this:
-                            //    foundpaths = foundPaths.ExistAbstract(varCubePostControllerOutput);
-                            //    foundpaths = safetyEnv.Implies(foundPaths).UnivAbstract(varCubePostInput);
                             nu0.update(safetyEnv.Implies(foundPaths).ExistAbstract(varCubePostControllerOutput).UnivAbstract(varCubePostInput));
                         }
 
@@ -318,20 +308,14 @@ public:
         BF_newDumpDot(*this,winningPositions,NULL,"/tmp/winningPositions.dot");
 
         // Check if for every possible environment initial position the system has a good system initial position
-        // BF robotInit = robotBDD.ExistAbstract(varCubePost);
         BF result;
         if (initSpecialRoboticsSemantics) {
             // TODO: Support for special-robotics semantics
             throw SlugsException(false,"Error: special robot init semantics not yet supported.\n");
-            // result = initEnv.Implies((winningPositions & initSys).ExistAbstract(varCubePreOutput)).UnivAbstract(varCubePreInput);
-            // if (!initSys.isTrue()) std::cerr << "Warning: Initialisation guarantees have been given although these are ignored in semantics-for-robotics mode! \n";
-            // result = (initEnv & initSys).Implies(winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         } else {
             result = initEnv.Implies(winningPositions & initSys).ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         }
-        // BF_newDumpDot(*this,initEnv.Implies(winningPositions & initSys),NULL,"/tmp/winningAndInit.dot");
-        // BF_newDumpDot(*this,result,NULL,"/tmp/result.dot");
-
+        
         // Check if the result is well-defind. Might fail after an incorrect modification of the above algorithm
         if (!result.isConstant()) throw "Internal error: Could not establish realizability/unrealizability of the specification.";
 
@@ -343,6 +327,7 @@ public:
         
         // Create a new liveness assumption that says that always eventually, if an action/pre-state
         // combination may lead to a different position, then it is taken
+        // (the completion variables always eventually catch up to the activation)
         BF prePostMotionStatesDifferent = mgr.constantFalse();
         for (uint i=0;i<preMotionStateVars.size();i++) {
             prePostMotionStatesDifferent |= (preMotionStateVars[i] ^ postMotionStateVars[i]);
@@ -354,7 +339,6 @@ public:
         for (unsigned int i=0;i<livenessAssumptions.size();i++) { 
             if ((livenessAssumptions[i] & (!newLivenessAssumption)).isFalse()) {
                 doesNewLivenessExist = true;
-                std::cerr << "doesNewLivenessExist  " << doesNewLivenessExist << "\n";
                 break;
             }
         }
@@ -363,7 +347,7 @@ public:
             if (!(newLivenessAssumption.isTrue())) {
                 std::cerr << "Note: Added a liveness assumption that always eventually, we are moving if an action is taken that allows moving.\n";
             }
-            BF_newDumpDot(*this,newLivenessAssumption,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
+            BF_newDumpDot(*this,newLivenessAssumption,"PreMotionState PreMotionControlOutput PostMotionState","/tmp/changeMotionStateLivenessAssumption.dot");
         }
 
         // Make sure that there is at least one liveness assumption and one liveness guarantee
@@ -371,118 +355,29 @@ public:
         if (livenessGuarantees.size()==0) livenessGuarantees.push_back(mgr.constantTrue());
         if (livenessAssumptions.size()==0) livenessAssumptions.push_back(mgr.constantTrue());
 
-        BF_newDumpDot(*this,robotBDD,"PreMotionState PostMotionControlOutput PostMotionState","/tmp/robotBDD.dot");
+        BF_newDumpDot(*this,robotBDD,"PreMotionState PreMotionControlOutput PostMotionState","/tmp/robotBDD.dot");
     }
 
-    // void addSafetyAssumption() {
-    //     // Find the safety guarantees which depend on the environment (dynamic obstacles)
-    //     // Note that we only want to single out post robot states because safeties with current states don't suffer from the inevitable collision problem
-    //     BF dynamicObst = mgr.constantFalse();
-    //     BF staticObst = mgr.constantFalse();
+    void addAutomaticallyGeneratedSafeties() {
+        
+        // Create new safety assumptions describing which regions the robot can end up in given the currently active controllers 
+        // and new safety guarantees describing which controllers can be activated
 
-    //     std::vector<VariableType> variableTypesOfInterest;
-    //     variableTypesOfInterest.push_back(PreInput);
-    //     variableTypesOfInterest.push_back(PreMotionState);
-    //     variableTypesOfInterest.push_back(PreMotionControlOutput);
-    //     variableTypesOfInterest.push_back(PostInput);
-    //     variableTypesOfInterest.push_back(PostMotionControlOutput);
-    //     std::vector<BF> variablesOfInterest;
-    //     for (auto it = variableTypesOfInterest.begin();it!=variableTypesOfInterest.end();it++) {
-    //         for (unsigned int i=0;i<variables.size();i++) {
-    //             if (variableTypes[i]==*it) {
-    //                 variablesOfInterest.push_back(variables[i]);
-    //             }
-    //         }
-    //     }
+        BF newSafetyEnv = robotBDD;
+        BF newSafetySys = robotBDD.ExistAbstract(varCubePostMotionState);
+        
+        safetyEnv &= newSafetyEnv;
+        safetySys &= newSafetySys;
+        std::cerr << "Note: Added a safety assumption and guarantee describing the robot's allowed transitions.\n";
+        BF_newDumpDot(*this,newSafetyEnv,"PreMotionState PreMotionControlOutput PostMotionState","/tmp/changeMotionStateSafetyAssumption.dot");
 
-    //     while ((safetySys | dynamicObst | staticObst)!=mgr.constantTrue()) { //TODO: safetySys contains non-motion guarantees too -- won't terminate!
-    //         // `determinize' everything but the postMotionStateVars
-    //         BF partialAssignment = determinize((!safetySys) & (!dynamicObst) & (!staticObst), variablesOfInterest);
-    //         BF_newDumpDot(*this,(!safetySys) & (!dynamicObst) & (!staticObst),NULL,"/tmp/TODOlist.dot");
-    //         BF_newDumpDot(*this,partialAssignment,NULL,"/tmp/partialAssignment.dot");
-
-    //         // with this partial assignment, build a cube for the PostMotionStateVars
-    //         BF checkPostRobotStates = mgr.constantFalse();
-    //         while (checkPostRobotStates != mgr.constantTrue()) { // there still exists more PostMotionStateVars satisfying the current predicate. TODO: need??
-    //             BF thisCube = determinize(partialAssignment & (!dynamicObst) & (!staticObst), postMotionStateVars);
-    //             BF_newDumpDot(*this,thisCube,NULL,"/tmp/cube.dot");
-
-    //             // If the cube created by abstracting out the inputs still falsifies the safetySys, treat as static obstacle
-    //             BF cubeOverInputs = thisCube.ExistAbstract(varCubePreInput).ExistAbstract(varCubePostInput);
-    //             if ((cubeOverInputs & safetySys).isFalse()) { //then we have a static obstacle. TODO: current robot states too? (PreRobotMotionVars)
-    //                 for (unsigned int i=0;i<postMotionStateVars.size();i++) {
-    //                     // see if we can build a cube around the given set of assignments
-    //                     BF candidate = thisCube.ExistAbstractSingleVar(postMotionStateVars[i]);
-    //                     if ((candidate & safetySys & (!dynamicObst) & (!staticObst)).isFalse()) {
-    //                         thisCube = candidate;
-    //                     }
-    //                 }
-    //                 staticObst |= thisCube;
-    //             } else {
-    //                  for (unsigned int i=0;i<postMotionStateVars.size();i++) {
-    //                     // see if we can build a cube around the given set of assignments
-    //                     BF candidate = thisCube.ExistAbstractSingleVar(postMotionStateVars[i]);
-    //                     if ((candidate & safetySys & (!dynamicObst) & (!staticObst)).isFalse()) {
-    //                         thisCube = candidate;
-    //                     }
-    //                 }
-    //                 dynamicObst |= thisCube;
-    //             }
-    //             BF_newDumpDot(*this,staticObst,NULL,"/tmp/staticObst.dot");
-    //             BF_newDumpDot(*this,dynamicObst,NULL,"/tmp/dynamicObst.dot");
-    //             checkPostRobotStates = !partialAssignment | dynamicObst | staticObst;
-    //             BF_newDumpDot(*this,checkPostRobotStates,NULL,"/tmp/checkPostRobotStatesInner.dot");
-    //             BF_newDumpDot(*this,safetySys | dynamicObst | staticObst,NULL,"/tmp/checkPostRobotStatesOuter.dot");
-    //         }
-    //     }
-
-        // // Find the state/input combinations where the model of the robot leads to unavoidable collisions with a dynamicObst
-        // std::vector<VariableType> variableTypesOfInterest1;
-        // variableTypesOfInterest.push_back(PreInput);
-        // variableTypesOfInterest.push_back(PreMotionState);
-        // variableTypesOfInterest.push_back(PreMotionControlOutput);
-        // variableTypesOfInterest.push_back(PostInput);
-        // std::vector<BF> variablesOfInterest;
-        // for (auto it = variableTypesOfInterest.begin();it!=variableTypesOfInterest.end();it++) {
-        //     for (unsigned int i=0;i<variables.size();i++) {
-        //         if (variableTypes[i]==*it) {
-        //             variablesOfInterest.push_back(variables[i]);
-        //         }
-        //     }
-        // }
-
-        // BF termSet = dynamicObst;
-        // BF oneStepCandidate = robotBDD & termSet & (!termSet.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost));
-        // while (oneStepCandidate!=mgr.constantFalse()) {
-        //     oneStepCandidate &= termSet;
-        //     BF controlsTODO = termSet.ExistAbstract(varCubePre & PostInput & PostMotionState);
-        //     while (controlsTODO!=mgr.constantFalse()) {
-        //         BF candidateCombinations = determinize(oneStepCandidate, variablesOfInterest);
-        //         if (candidateCombinations.UnivAbstract(PostControllerOutputVars) & (!termSet)).isFalse() {
-        //             oneStepCandidate &= !candidateCombinations;
-        //             break;
-        //         }
-        //         else {
-        //             for () {
-        //                 BF cubeOverControls = determinize(candidateCombinations, PreControllerOutputVars);      
-        //                 if (cubeOverControls & (!termSet)).isFalse() | !(cubeOverControls & termSet & staticObst).isFalse() {
-        //                     // remove from oneStepCandidate
-        //                     oneStepCandidate &= !candidateCombinations;
-        //                     break;
-        //                 }
-        //             }
-        //         }
-        //         termSet &= oneStepCandidate;
-        //     }            
-        // }
-
-    // }
-
+    }
 
     /**
      * @brief This function orchestrates the execution of slugs when this plugin is used.
      */
     void execute() {
+        addAutomaticallyGeneratedSafeties();
         addAutomaticallyGeneratedLivenessAssumption();
         checkRealizability();
         if (realizable) {

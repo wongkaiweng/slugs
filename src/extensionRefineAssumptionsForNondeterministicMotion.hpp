@@ -12,25 +12,26 @@ template<class T> class XRefineAssumptionsForNondeterministicMotion : public T {
 protected:
 
     // New variables
-    std::string outputFilenameCounter;
     std::string outputFilenameStrategy;
 
     // Inherit stuff that we actually use here.
     using T::realizable;
     using T::variables;
     using T::variableTypes;
+    using T::variableNames;
     using T::checkRealizability;
     using T::determinize;
     using T::doesVariableInheritType;
     using T::mgr;
-    using T::variableNames;
-    using T::computeAndPrintExplicitStateStrategy;
-    using T::failingPreAndPostConditions;
     using T::varCubePre;
     using T::varCubePost;
     using T::varCubePostInput;
     using T::varCubePostOutput;
     using T::varCubePreInput;
+    using T::varCubePreOutput;
+    using T::preVars;
+    using T::postVars;
+    using T::postOutputVars;
     using T::livenessAssumptions;
     using T::livenessGuarantees;
     using T::safetyEnv;
@@ -40,8 +41,8 @@ protected:
     using T::varVectorPre;
     using T::varVectorPost;
     using T::robotBDD;
-    using T::foundCutConditions;
-    using T::preVars;
+    using T::strategyDumpingData;
+    using T::winningPositions;
 
     std::vector<std::pair<unsigned int,BF> > strategyDumpingDataPlayer2;
     BF winningPositionsPlayer2;
@@ -58,15 +59,12 @@ protected:
     SlugsVarCube varCubePreMotionState{PreMotionState,this};
     SlugsVarCube varCubePreControllerOutput{PreMotionControlOutput,this};
 
+    BF failingPreAndPostConditions = mgr.constantFalse();
+    std::vector<boost::tuple<unsigned int,BF> > foundCutConditions;
+
 public:
 
     XRefineAssumptionsForNondeterministicMotion<T>(std::list<std::string> &filenames) : T(filenames) {
-        if (filenames.size()==1) {
-            outputFilenameCounter = "";
-        } else {
-            outputFilenameCounter = filenames.front();
-            filenames.pop_front();
-        }
         if (filenames.size()==1) {
             outputFilenameStrategy = "";
         } else {
@@ -78,23 +76,7 @@ public:
     void execute() {
         T::execute();
         if (!realizable) {
-            if (outputFilenameCounter=="") {
-                computeAndPrintExplicitStateStrategy(std::cout);
-            } else {
-                std::ofstream of(outputFilenameCounter.c_str());
-                if (of.fail()) {
-                    SlugsException ex(false);
-                    ex << "Error: Could not open output file'" << outputFilenameCounter << "\n";
-                    throw ex;
-                }
-                computeAndPrintExplicitStateStrategy(of);
-                if (of.fail()) {
-                    SlugsException ex(false);
-                    ex << "Error: Writing to output file'" << outputFilenameCounter << "failed. \n";
-                    throw ex;
-                }
-                of.close();
-            }
+            extractPatternsFromWinningStates();
         }
 
         BF_newDumpDot(*this,safetySys,NULL,"/tmp/safetySysBefore.dot");
@@ -111,69 +93,105 @@ public:
         //     BF_newDumpDot(*this,livenessGuarantees[i],NULL,fname.str());
         // }
 
-        std::cerr << "adding safety assumptions/guarantees and re-synthesizing counter-strategy\n";
         int iter = 0;
         while (!failingPreAndPostConditions.isFalse()){ // & idx<=10){
+            std::cerr << "adding safety assumptions/guarantees and re-synthesizing the counter-strategy\n";
             std::cerr << "major iter " << iter << "\n";
             std::stringstream fname;
             fname << "/tmp/failingPreAndPostConditions" << iter << ".dot";
             BF_newDumpDot(*this,failingPreAndPostConditions,NULL,fname.str());
-            // std::stringstream fname1;
-            // fname1 << "/tmp/safetySysBefore" << idx << ".dot";
-            // BF_newDumpDot(*this,safetySys,NULL,fname1.str());
-            // std::stringstream fname2;
-            // fname2 << "/tmp/safetyEnvBefore" << idx << ".dot";
-            // BF_newDumpDot(*this,safetyEnv,NULL,fname2.str());
-            // BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsBefore.dot");
+            std::stringstream fname1;
+            fname1 << "/tmp/safetySysBefore" << iter << ".dot";
+            BF_newDumpDot(*this,safetySys,NULL,fname1.str());
+            std::stringstream fname2;
+            fname2 << "/tmp/safetyEnvBefore" << iter << ".dot";
+            BF_newDumpDot(*this,safetyEnv,NULL,fname2.str());
+
+
             BF TODO = failingPreAndPostConditions;
             int idx = 0;
+            bool foundRevisions = false;
             while (!TODO.isFalse()){
                 BF deadAssignment = determinize(TODO,preControllerOutputVars);
                 deadAssignment = determinize(deadAssignment,preMotionStateVars);
-                deadAssignment = determinize(deadAssignment,postInputVars);
                 TODO &= !deadAssignment;
 
                 BF deadlockPre = deadAssignment.ExistAbstract(varCubePost);
                 BF deadlockPost = deadAssignment.ExistAbstract(varCubePre);
 
-                // std::stringstream fname1;
-                // fname1 << "/tmp/failingPreAndPostConditions" << idx << ".dot";
-                // BF_newDumpDot(*this,failingPreAndPostConditions,NULL,fname1.str());
-
                 BF candidateEnvTrans = deadlockPre.Implies(!deadlockPost);
-                BF candidateSysTrans = (!deadlockPost).Implies(deadlockPre.SwapVariables(varVectorPre,varVectorPost));
-                if (!(candidateEnvTrans & safetyEnv).isFalse()) { //TODO: liveness too
-                    safetyEnv &= candidateEnvTrans;
-                    // safetySys &= candidateSysTrans;
+                BF candidateSysTrans = deadlockPost.Implies(!deadlockPre.SwapVariables(varVectorPre,varVectorPost));
 
-                    // std::stringstream fname1;
-                    // fname1 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
-                    // BF_newDumpDot(*this,candidateEnvTrans,NULL,fname1.str());
-                    // std::stringstream fname2;
-                    // fname2 << "/tmp/addedSafetySys" << iter << "index" << idx << ".dot";
-                    // BF_newDumpDot(*this,candidateSysTrans,NULL,fname2.str());
+                if (((safetyEnv.ExistAbstract(varCubePostInput)) & !((safetyEnv & candidateEnvTrans).ExistAbstract(varCubePostInput))).isFalse()) {
+                    foundRevisions = true;
+                    safetyEnv &= candidateEnvTrans;
+                    safetySys &= candidateSysTrans;
+
+                    std::stringstream fname3;
+                    fname3 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
+                    BF_newDumpDot(*this,candidateEnvTrans,NULL,fname3.str());
+                    std::stringstream fname4;
+                    fname4 << "/tmp/addedSafetySys" << iter << "index" << idx << ".dot";
+                    BF_newDumpDot(*this,candidateSysTrans,NULL,fname4.str());
                     // std::stringstream fname3;
                     // fname3 << "/tmp/safetyEnvAfter" << iter << "index" << idx << ".dot";
                     // BF_newDumpDot(*this,safetyEnv,NULL,fname3.str());
                     // std::stringstream fname4;
                     // fname4 << "/tmp/safetySysAfter" << iter << "index" << idx << ".dot";
                     // BF_newDumpDot(*this,safetySys,NULL,fname4.str());
+                    std::cerr << idx << " ";
                 }
-                else {std::cerr << "Warning: A candidate transition statement was not added.\n";}   
                 idx++;
             }
+
+            if (!foundRevisions) {throw SlugsException(false,"Error: could not find any refinements!\n");}
+            std::cerr << "\n";
+
+            // // BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsBefore.dot");
+            // // BF TODO = failingPreAndPostConditions;
+            // BF deadAssignment = failingPreAndPostConditions;
+            // int idx = 0;
+            // // while (!TODO.isFalse()){
+            // //     BF deadAssignment = determinize(TODO,preControllerOutputVars);
+            // //     deadAssignment = determinize(deadAssignment,preMotionStateVars);
+            // //     deadAssignment = determinize(deadAssignment,postInputVars);
+            // //     TODO &= !deadAssignment;
+
+            //     BF deadlockPre = deadAssignment.ExistAbstract(varCubePost);
+            //     BF deadlockPost = deadAssignment.ExistAbstract(varCubePre);
+
+            //     // std::stringstream fname1;
+            //     // fname1 << "/tmp/failingPreAndPostConditions" << idx << ".dot";
+            //     // BF_newDumpDot(*this,failingPreAndPostConditions,NULL,fname1.str());
+
+            //     BF candidateEnvTrans = deadlockPre.Implies(!deadlockPost);
+            //     BF candidateSysTrans = deadlockPost.Implies(!deadlockPre.SwapVariables(varVectorPre,varVectorPost));
+            //     if (!(candidateEnvTrans & safetyEnv).isFalse()) { //TODO: liveness too
+            //         safetyEnv &= candidateEnvTrans;
+            //         safetySys &= candidateSysTrans;
+
+            //         // std::stringstream fname1;
+            //         // fname1 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
+            //         // BF_newDumpDot(*this,candidateEnvTrans,NULL,fname1.str());
+            //         // std::stringstream fname2;
+            //         // fname2 << "/tmp/addedSafetySys" << iter << "index" << idx << ".dot";
+            //         // BF_newDumpDot(*this,candidateSysTrans,NULL,fname2.str());
+            //         // std::stringstream fname3;
+            //         // fname3 << "/tmp/safetyEnvAfter" << iter << "index" << idx << ".dot";
+            //         // BF_newDumpDot(*this,safetyEnv,NULL,fname3.str());
+            //         // std::stringstream fname4;
+            //         // fname4 << "/tmp/safetySysAfter" << iter << "index" << idx << ".dot";
+            //         // BF_newDumpDot(*this,safetySys,NULL,fname4.str());
+            //     }
+            //     else {std::cerr << "Warning: A candidate transition statement was not added.\n";}   
+            //     idx++;
+            // // }
 
             // prepare the variables for a new round of fixedpoint computations
             failingPreAndPostConditions = mgr.constantFalse();
             T::execute();
             if (!realizable) {
-                if (outputFilenameCounter=="") {
-                    computeAndPrintExplicitStateStrategy(std::cout);
-                } else {
-                    std::ofstream of(outputFilenameCounter.c_str());
-                    computeAndPrintExplicitStateStrategy(of);
-                    of.close();
-                }
+                extractPatternsFromWinningStates();
             }
             iter++;
         }
@@ -186,7 +204,7 @@ public:
         BF candidateAll = mgr.constantFalse();
         if (!realizable) {
         // if (false){
-            std::cerr << "adding liveness assumptions and re-synthesizing counter-strategy\n";
+            std::cerr << "adding liveness assumptions and re-synthesizing the counter-strategy\n";
             // BF_newDumpDot(*this,candidateWinningPreConditions,NULL,"/tmp/candidateWinningPreConditions.dot");
             int iter = 0;
             for (auto it = foundCutConditions.begin();it!=foundCutConditions.end();it++) {
@@ -231,7 +249,7 @@ public:
                     // fname << "/tmp/newLivenessAssumptionsFalseSys" << boost::get<0>(*it) << ".dot";
                     // BF_newDumpDot(*this,(safetySys & candidate.SwapVariables(varVectorPre,varVectorPost)),NULL,fname.str());    
                     if (OKtoAdd){
-                        // livenessAssumptions.push_back(candidate);    
+                        // livenessAssumptions.push_back(candidate);
                         candidateAll |= candidate;
                         std::stringstream fname;
                         fname << "/tmp/addedLivenessAssumptions" << iter << "p" << boost::get<0>(*it) << "index" << idx << ".dot";
@@ -247,13 +265,7 @@ public:
 
             T::execute();
             if (!realizable) {
-                if (outputFilenameCounter=="") {
-                    computeAndPrintExplicitStateStrategy(std::cout);
-                } else {
-                    std::ofstream of(outputFilenameCounter.c_str());
-                    computeAndPrintExplicitStateStrategy(of);
-                    of.close();
-                }
+                extractPatternsFromWinningStates();
             }
         }   
         // livenessAssumptions.push_back(candidateWinningPreConditions);
@@ -273,6 +285,67 @@ public:
             std::cerr << "RESULT: Specification is unrealizable.\n";
         }
 
+    }
+
+    void extractPatternsFromWinningStates() {
+
+        failingPreAndPostConditions = mgr.constantFalse();
+        foundCutConditions.clear();
+
+        // We don't want any reordering from this point onwards, as
+        // the BDD manipulations from this point onwards are 'kind of simple'.
+        mgr.setAutomaticOptimisation(false);
+
+        // List of states in existance so far. The first map
+        // maps from a BF node pointer (for the pre variable valuation) and a goal
+        // to a state number. The vector then contains the concrete valuation.
+        std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > lookupTableForPastStates;
+        std::vector<BF> bfsUsedInTheLookupTable;
+        std::list<std::pair<size_t, std::pair<unsigned int, unsigned int> > > todoList;
+
+        
+        // Prepare positional strategies for the individual goals
+        std::vector<std::vector<BF> > positionalStrategiesForTheIndividualGoals(livenessAssumptions.size());
+        for (unsigned int i=0;i<livenessAssumptions.size();i++) {
+            std::cerr << i << "\n";
+            BF casesCovered = mgr.constantFalse();
+            std::vector<BF> strategyAllPost(livenessGuarantees.size()+1);
+            for (unsigned int j=0;j<livenessGuarantees.size()+1;j++) {
+                strategyAllPost[j] = mgr.constantFalse();
+            }
+            for (auto it = strategyDumpingData.begin();it!=strategyDumpingData.end();it++) {
+                if (boost::get<0>(*it) == i) {
+                    //Have to cover each guarantee (since the winning strategy depends on which guarantee is being pursued)
+                    //Essentially, the choice of which guarantee to pursue can be thought of as a system "move".
+                    //The environment always to chooses that prevent the appropriate guarantee.
+                    BF newCases = boost::get<2>(*it).ExistAbstract(varCubePostMotionState) & !casesCovered;
+                    strategyAllPost[boost::get<1>(*it)] |= newCases & boost::get<2>(*it);
+                    casesCovered |= newCases;
+                    // BF_newDumpDot(*this,strategyAllPost[boost::get<1>(*it)],NULL,"/tmp/strategyAllPost.dot"); 
+                    // std::stringstream fname;
+                    // fname << "/tmp/strategyAllPost" << i << "by" << boost::get<1>(*it) << ".dot";
+                    // BF_newDumpDot(*this,strategyAllPost[boost::get<1>(*it)],NULL,fname.str());
+                }
+            }
+            positionalStrategiesForTheIndividualGoals[i] = strategyAllPost;
+        }
+
+        // Prepare initial to-do list from the allowed initial states. Select a single initial input valuation.
+
+        BF robotAllowedMoves = robotBDD.ExistAbstract(varCubePostMotionState);
+        // TODO: Support for non-special-robotics semantics
+        failingPreAndPostConditions = winningPositions & safetyEnv & !safetySys & robotBDD;
+        failingPreAndPostConditions = robotAllowedMoves.Implies(failingPreAndPostConditions).ExistAbstract(varCubePostMotionState).UnivAbstract(varCubePostControllerOutput).ExistAbstract(varCubePreInput);
+        failingPreAndPostConditions &= !(failingPreAndPostConditions.UnivAbstract(varCubePostInput)); // remove safeties that are pure obstacles.
+
+        BF_newDumpDot(*this,failingPreAndPostConditions,NULL,"/tmp/failingPreAndPostConditions.dot");
+
+        // save any combination of pre variables and post inputs found that are not included in player 1's strategy and don't falsify the environment
+        //TODO: for *all* post motion states? (by definition, any control output that is winning should produce motion states that are all winning)
+        BF cutCandidate = safetyEnv & robotBDD & (!winningPositions.ExistAbstract(varCubePre)) & winningPositions.ExistAbstract(varCubePost);
+        if (!cutCandidate.isFalse()) {
+            foundCutConditions.push_back(boost::make_tuple(0,cutCandidate));
+        }
     }
 
     void checkRealizabilityPlayer2() {
@@ -336,7 +409,7 @@ public:
                             // NB (JD): To get rid of unintended behaviors due to falsifying safetyEnv, can't we simply do this:
                             //    foundpaths = foundPaths.ExistAbstract(varCubePostControllerOutput);
                             //    foundpaths = safetyEnv.Implies(foundPaths).UnivAbstract(varCubePostInput);
-                            nu0.update(safetyEnv.Implies(foundPaths).ExistAbstract(varCubePostControllerOutput).UnivAbstract(varCubePostInput));
+                            nu0.update(safetyEnv.Implies(foundPaths).UnivAbstract(varCubePostMotionState).ExistAbstract(varCubePostControllerOutput).UnivAbstract(varCubePostInput));
                         }
 
                         // Update the set of positions that are winning for some liveness assumption
@@ -373,7 +446,8 @@ public:
             // if (!initSys.isTrue()) std::cerr << "Warning: Initialisation guarantees have been given although these are ignored in semantics-for-robotics mode! \n";
             // result = (initEnv & initSys).Implies(winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         } else {
-            result = initEnv.Implies(winningPositionsPlayer2 & initSys).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
+            // result = initEnv.Implies(winningPositionsPlayer2 & initSys).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
+            result = initEnv.Implies(winningPositionsPlayer2 & initSys).ExistAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).UnivAbstract(varCubePreInput);
         }
         // BF_newDumpDot(*this,(winningPositions & initSys),NULL,"/tmp/winningAndInit.dot");
         // BF_newDumpDot(*this,result,NULL,"/tmp/result.dot");

@@ -53,7 +53,7 @@
 #include "extensionAbstractWinningTraceGenerator.hpp"
 #include "extensionPermissiveExplicitStrategy.hpp"
 #include "extensionIncompleteInformationEstimatorSynthesis.hpp"
-#include "extensionNondeterministicMotion.hpp"
+#include "extensionNondeterministicMotion.hpp" 
 #include "extensionCounterstrategyNondeterministicMotion.hpp"
 #include "extensionExtractExplicitCounterstrategyNondeterministicMotion.hpp"
 #include "extensionExtractSymbolicStrategy.hpp"
@@ -61,6 +61,7 @@
 #include "extensionInteractiveStrategyNondeterministicMotion.hpp"
 #include "extensionGetCounterstrategyForNondeterministicMotion.hpp"
 #include "extensionRefineAssumptionsForNondeterministicMotion.hpp"
+#include "extensionInteractiveRefineAssumptionsForNondeterministicMotion.hpp"
 #include "extensionNondeterministicMotionFastSlow.hpp"
 
 //===================================================================================
@@ -88,9 +89,9 @@ const char *commandLineArguments[] = {
     "--extractExplicitPermissiveStrategy","Computes an explicit-state permissive strategy.",
     "--computeIncompleteInformationEstimator","Computes a imcomplete-information state estimation controller.",
     "--nonDeterministicMotion","Computes a controller using an non-deterministic motion abstraction.",
+    "--nonDeterministicMotionInteractiveStrategy","Computes a controller using an non-deterministic motion abstraction.",
     "--counterStrategyNonDeterministicMotion","Computes the environment counterstrategy using an non-deterministic motion abstraction.",
     "--strategyNonDeterministicMotion","Extract a strategy in the non-deterministic abstraction setting.",
-    "--interactiveNonDeterministicMotion","Opens an interactive shell after realizability checking for the non-deterministic abstraction setting.",
     "--environmentRefinementNonDeterministicMotion","Automatically compute new assumptions and guarantees to address unrealizability in specs involving non-deterministic robot abstractions",
     "--nonDeterministicMotionFastSlow","Computes a controller using an non-deterministic motion abstraction using a fast-slow implementation."
 };
@@ -166,9 +167,10 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--nonDeterministicMotion", XNonDeterministicMotion<GR1Context,false>::makeInstance),
     OptionCombination("--nonDeterministicMotion --sysInitRoboticsSemantics", XNonDeterministicMotion<GR1Context,true>::makeInstance),
     OptionCombination("--strategyNonDeterministicMotion", XExtractExplicitStrategyNondeterministicMotion<XNonDeterministicMotion<GR1Context,false> >::makeInstance),
-    OptionCombination("--interactiveNonDeterministicMotion", XInteractiveStrategyNondeterministicMotion<XNonDeterministicMotion<GR1Context,false> >::makeInstance),
+    OptionCombination("--nonDeterministicMotionInteractiveStrategy", XInteractiveStrategyNondeterministicMotion<XNonDeterministicMotion<GR1Context,false> >::makeInstance),
     OptionCombination("--counterStrategyNonDeterministicMotion", XGetCounterstrategyNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance),
-    OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> > >::makeInstance),
+    OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> >::makeInstance),
+    OptionCombination("--environmentRefinementNonDeterministicMotion --interactiveStrategy", XInteractiveRefineAssumptionsForNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> >::makeInstance),
     // OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XNonDeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> ,false> > >::makeInstance)
     OptionCombination("--nonDeterministicMotionFastSlow", XNonDeterministicMotionFastSlow<GR1Context,false>::makeInstance)
         

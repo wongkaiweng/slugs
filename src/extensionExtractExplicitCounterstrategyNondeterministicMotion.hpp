@@ -118,11 +118,13 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     // special robot init semantics:
     // BF todoInit = (winningPositions & initEnv & initSys);// & robotBDD.ExistAbstract(varCubePost));
     // non-special robot init semantics:
-    BF todoInit = (initEnv & initSys.Implies(winningPositions)) & safetySys;// & robotBDD.ExistAbstract(varCubePost));
+    BF todoInit = (initEnv & initSys.Implies(winningPositions)) & safetySys & robotBDD;// & robotBDD.ExistAbstract(varCubePost));
     todoInit = determinize(todoInit,preVars); // choose one assignment from the winning set
     BF_newDumpDot(*this,initSys,NULL,"/tmp/initSys.dot"); 
     BF_newDumpDot(*this,todoInit,NULL,"/tmp/todoInit.dot");
     BF_newDumpDot(*this,safetyEnv,NULL,"/tmp/safetyEnv.dot");
+    BF_newDumpDot(*this,safetySys,NULL,"/tmp/safetySys.dot");
+    BF_newDumpDot(*this,!safetySys,NULL,"/tmp/negSafetySys.dot");
     int iter = 0;
     while (!(todoInit.isFalse())) {
         std::cerr << iter << "\n";
@@ -176,7 +178,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         outputStream << ">\n\tWith successors : ";
         first = true;
 
-        BF_newDumpDot(*this,currentPossibilities,NULL,"/tmp/currentPossibilities.dot");
+        // BF_newDumpDot(*this,currentPossibilities,NULL,"/tmp/currentPossibilities.dot");
         // std::stringstream fname;
         // fname << "/tmp/currentPossibilities" << stateNum << ".dot";
         // BF_newDumpDot(*this,currentPossibilities,NULL,fname.str());
@@ -185,26 +187,26 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         BF possibilitiesAndRobotBDD = currentPossibilities & robotBDD;
         BF deadlockInput = mgr.constantTrue();
         int indx = 0;
-        bool deadlockFound = true;
+        // bool deadlockFound = true;
         while (!possibilitiesAndRobotBDD.isFalse()) {
             // std::cerr << "  Command combination (dead chk) " << indx << "\n";
             // BF possibilitiesForThisInput = determinize(possibilitiesAndRobotBDD, postInputVars);
             BF possibilitiesForThisControl = determinize(possibilitiesAndRobotBDD, postControllerOutputVars);
             possibilitiesAndRobotBDD &= !possibilitiesForThisControl;//.ExistAbstract(varCubePostMotionState);
             deadlockInput &= (possibilitiesForThisControl & safetyEnv & !safetySys).ExistAbstract(varCubePostMotionState).ExistAbstract(varCubePostControllerOutput);
-            if (deadlockInput!=mgr.constantFalse()) {
-                deadlockFound = true;
-                break;
-            }
-            else {deadlockFound = false;}
             // BF_newDumpDot(*this,deadlockInput,NULL,"/tmp/deadlockInput.dot");
             // std::stringstream fname;
-            // fname << "/tmp/deadlockInput" << stateNum << "by" << indx << ".dot";
-            // BF_newDumpDot(*this,deadlockInput,NULL,fname.str());
+            // fname << "/tmp/deadlockInput" << stateNum << "iter" << indx << ".dot";
+            // BF_newDumpDot(*this,(possibilitiesForThisControl & safetyEnv & !safetySys),NULL,fname.str());
+            // if (deadlockInput!=mgr.constantFalse()) {
+            //     deadlockFound = true;
+            //     break;
+            // }
+            // else {deadlockFound = false;}
             // std::cerr << "stateNum" << stateNum << "indx" << indx << "\n";
             indx++;
         }
-        if (deadlockFound) {
+        if (deadlockInput!=mgr.constantFalse()) {
             addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream);
         } else {
             
@@ -212,9 +214,9 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
             while ((currentPossibilities & positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second])==mgr.constantFalse()){
                 std::cerr << "  New goal " << current.second.second << "\n";
                 current.second.second = (current.second.second + 1) % livenessGuarantees.size();
-                std::stringstream fname;
-                fname << "/tmp/positionalStrategiesForTheIndividualGoalsEnvGoal" << current.second.first << "SysGoal" << current.second.second << ".dot";
-                BF_newDumpDot(*this,positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second],NULL,fname.str());
+                // std::stringstream fname;
+                // fname << "/tmp/positionalStrategiesForTheIndividualGoalsEnvGoal" << current.second.first << "SysGoal" << current.second.second << ".dot";
+                // BF_newDumpDot(*this,positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second],NULL,fname.str());
             } 
             currentPossibilities &= positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second];
             assert(currentPossibilities != mgr.constantFalse());

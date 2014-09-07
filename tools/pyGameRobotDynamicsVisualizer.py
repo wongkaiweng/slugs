@@ -287,8 +287,8 @@ def actionLoop():
 
     # Initialize the plot window where we will be displaying the continuous trajectory
     # fig = plt.figure()
-    inflationFactor = 3  # NOTE: this takes advantage of 'unused' border cells (due to eps-inflation) to increase the effective workspace size.
-    additionalImageCellsNotInStrategy = 3
+    inflationFactor = 2  # NOTE: this takes advantage of 'unused' border cells (due to eps-inflation) to increase the effective workspace size.
+    additionalImageCellsNotInStrategy = 2
     plt.axis([
         -additionalImageCellsNotInStrategy*eta-0.1,
         xsizePng*eta-additionalImageCellsNotInStrategy*eta+0.1,
@@ -320,7 +320,8 @@ def actionLoop():
     print 
 
     # Open Slugs
-    slugsProcess = subprocess.Popen(slugsLink+" --interactiveNonDeterministicMotion "+slugsinfile+" "+bddinfile, shell=True, bufsize=1048000, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    # slugsProcess = subprocess.Popen(slugsLink+" --nonDeterministicMotionInteractiveStrategy "+slugsinfile+" "+bddinfile, shell=True, bufsize=1048000, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    slugsProcess = subprocess.Popen(slugsLink+" --environmentRefinementNonDeterministicMotion --interactiveStrategy "+slugsinfile+" "+bddinfile, shell=True, bufsize=1048000, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
     # Get input APs
     slugsProcess.stdin.write("XPRINTINPUTS\n")
@@ -370,6 +371,7 @@ def actionLoop():
     slugsProcess.stdin.flush()
     slugsProcess.stdout.readline() # Skip the prompt
     currentState = slugsProcess.stdout.readline().strip()
+    print currentState
 
     # Pre-store positions
     doorAndDeliveryInputBitPositions = {}
@@ -385,12 +387,14 @@ def actionLoop():
     slugsProcess.stdin.flush()
     slugsProcess.stdout.readline() # Skip the prompt
     currentState = slugsProcess.stdout.readline().strip() 
+    print currentState
 
     motionStateRaw = [0]*len(motionStateBitVars)
     for k in xrange(0,len(motionStateBitVars)):
         for i,ap in enumerate(outputAPs):
             for  j,ap2 in enumerate(motionStateBitVars[k]):
                 if ap==ap2:
+                    print i+len(inputAPs)
                     if currentState[i+len(inputAPs)]=="1":
                         motionStateRaw[k] += (1 << j)
                     elif currentState[i+len(inputAPs)]=="0":
@@ -406,7 +410,7 @@ def actionLoop():
 
     loopNumber = 0
     isPaused = False
-    while loopNumber < 200:
+    while loopNumber < 600:
         loopNumber += 1
 
         for event in pygame.event.get():

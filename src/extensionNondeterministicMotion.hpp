@@ -188,6 +188,8 @@ public:
                         allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
+                        allowedTypes.insert(PostMotionState);
+                        allowedTypes.insert(PostMotionControlOutput); //-> Is not taken into account
                         livenessAssumptions.push_back(parseBooleanFormula(currentLine,allowedTypes));
                     } else if (readMode==9) {
                         std::set<VariableType> allowedTypes;

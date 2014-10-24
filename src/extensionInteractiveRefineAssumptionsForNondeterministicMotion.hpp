@@ -122,7 +122,12 @@ public:
 
             BF TODO = failingPreAndPostConditions;
             int idx = 0;
+            int counter = 0;
             bool foundRevisions = false;
+            std::vector<double> xDecimalValue;
+            std::vector<double> yDecimalValue;
+            BF safetyEnvTent = mgr.constantTrue();
+            BF safetySysTent = mgr.constantTrue();
             while (!TODO.isFalse()){
                 BF deadAssignment = determinize(TODO,preControllerOutputVars);
                 deadAssignment = determinize(deadAssignment,preMotionStateVars);
@@ -136,28 +141,72 @@ public:
 
                 if (((safetyEnv.ExistAbstract(varCubePostInput)) & !((safetyEnv & candidateEnvTrans).ExistAbstract(varCubePostInput))).isFalse()) {
                     foundRevisions = true;
-                    safetyEnv &= candidateEnvTrans;
-                    safetySys &= candidateSysTrans;
+                    safetyEnvTent &= candidateEnvTrans;
+                    safetySysTent &= candidateSysTrans;
 
-                    std::stringstream fname3;
-                    fname3 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
-                    BF_newDumpDot(*this,candidateEnvTrans,NULL,fname3.str());
-                    std::stringstream fname4;
-                    fname4 << "/tmp/addedSafetySys" << iter << "index" << idx << ".dot";
-                    BF_newDumpDot(*this,candidateSysTrans,NULL,fname4.str());
+                    BF flaggedMotion = deadlockPre.ExistAbstract(varCubePreControllerOutput);
+
+                    xDecimalValue.push_back(0.0);
+                    yDecimalValue.push_back(0.0);
+                    int xCounter = 0;
+                    int yCounter = 0;
+                    std::cerr << " PreMotionStateX" << PreMotionStateX << "\n";
+                    std::cerr << " PreMotionStateY" << PreMotionStateY << "\n";
+                    for (unsigned int i=0;i<variables.size();i++) {
+                        std::cerr << " variableTypes[i]" << variableTypes[i] << "\n";
+                        if (variableTypes[i]==PreMotionStateX) {
+                            std::cerr << "PreMotionStateX found at" << counter << " i" << i << "\n";
+                            if (!(variables[i] & flaggedMotion).isFalse()) {
+                                xDecimalValue[counter] += pow(2, xCounter);
+                            }
+                        }
+                        if (variableTypes[i]==PreMotionStateY) {
+                            std::cerr << "PreMotionStateY found at" << counter << " i" << i << "\n";
+                            if (!(variables[i] & flaggedMotion).isFalse()) {
+                                yDecimalValue[counter] += pow(2, yCounter);
+                            }
+                        }
+                    }
+                    std::cerr << "xDecimalValue[" << counter << "] " << xDecimalValue[counter] << "\n";
+                    std::cerr << "yDecimalValue[" << counter << "] " << yDecimalValue[counter] << "\n";
+
+                    // std::stringstream fname3;
+                    // fname3 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
+                    // BF_newDumpDot(*this,candidateEnvTrans,NULL,fname3.str());
+                    // std::stringstream fname4;
+                    // fname4 << "/tmp/addedSafetySys" << iter << "index" << idx << ".dot";
+                    // BF_newDumpDot(*this,candidateSysTrans,NULL,fname4.str());
                     // std::stringstream fname3;
                     // fname3 << "/tmp/safetyEnvAfter" << iter << "index" << idx << ".dot";
                     // BF_newDumpDot(*this,safetyEnv,NULL,fname3.str());
                     // std::stringstream fname4;
                     // fname4 << "/tmp/safetySysAfter" << iter << "index" << idx << ".dot";
                     // BF_newDumpDot(*this,safetySys,NULL,fname4.str());
-                    std::cerr << idx << " ";
+                    
+                    // std::cerr << idx << " ";
+                    counter++;
                 }
                 idx++;
             }
 
             if (!foundRevisions) {throw SlugsException(false,"Error: could not find any refinements!\n");}
             std::cerr << "\n";
+
+            double maxDist = 0.0;
+            for (unsigned int i=0;i<counter;i++) {
+                for (unsigned int j=0;j<counter;j++) {
+                    double currDist = sqrt(pow(xDecimalValue[i] - xDecimalValue[j],2) + pow(yDecimalValue[i] - yDecimalValue[j],2));
+                    if (currDist > maxDist) {maxDist = currDist;}
+                }
+            }
+
+            std::cerr << "Deadlock revisions found.\nWhen within " << maxDist << " of station_1, never set environment variable s1_occupied to True.\nAccept? (y/n)";
+            char userResponse = 'y';
+            std::cin >> userResponse;
+            if (userResponse == 'y') {
+                safetySys &= safetySysTent;
+                safetyEnv &= safetyEnvTent;
+            }
 
             // prepare the variables for a new round of fixedpoint computations
             failingPreAndPostConditions = mgr.constantFalse();

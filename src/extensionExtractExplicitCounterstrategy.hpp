@@ -41,6 +41,9 @@ protected:
     using T::postOutputVars;
     using T::doesVariableInheritType;
 
+    BF foundCutPostConditions = mgr.constantFalse();
+    BF candidateFailingPreConditions = mgr.constantFalse();
+
     XExtractExplicitCounterStrategy<T>(std::list<std::string> &filenames) : T(filenames) {
         if (filenames.size()==1) {
             outputFilename = "";
@@ -81,6 +84,8 @@ void execute() {
                 of.close();
             }
         }
+        BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/foundCutPostConditions.dot");
+        BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
 }
 
     
@@ -178,14 +183,30 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
             assert(currentPossibilities != mgr.constantFalse());
             BF remainingTransitions = currentPossibilities;
 
+            // save any combination of pre variables and post inputs found that are not included in player 1's strategy
+            BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitions.dot");
+            BF foundCutConditions = (!remainingTransitions.ExistAbstract(varCubePre)) & remainingTransitions.ExistAbstract(varCubePost);
+            candidateFailingPreConditions |= remainingTransitions;
+            BF_newDumpDot(*this,!(remainingTransitions).ExistAbstract(varCubePre),NULL,"/tmp/candidateWinningThisState.dot");
+            std::stringstream ss1;
+            std::stringstream ss2;
+            ss1 << "/tmp/candidateWinning" << stateNum << ".dot";
+            ss2 << "/tmp/remainingTransitions" << stateNum << ".dot";
+            BF_newDumpDot(*this,(!remainingTransitions.ExistAbstract(varCubePre)) & remainingTransitions.ExistAbstract(varCubePost),NULL,ss1.str());
+            BF_newDumpDot(*this,remainingTransitions,NULL,ss2.str());
+
             // Choose one next input and stick to it!
+            // BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitionsBefore.dot");
             remainingTransitions = determinize(remainingTransitions,postInputVars);
+            // BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitionsAfter.dot");
 
             // Switching goals
             while (!(remainingTransitions & safetySys).isFalse()) {
 
                 BF safeTransition = remainingTransitions & safetySys;
                 BF newCombination = determinize(safeTransition, postOutputVars);
+
+                foundCutPostConditions |= foundCutConditions & newCombination.ExistAbstract(varCubePre).ExistAbstract(varCubePostInput);
 
                 // Jump as much forward  in the liveness assumption list as possible ("stuttering avoidance")
                 unsigned int nextLivenessAssumption = current.second.first;

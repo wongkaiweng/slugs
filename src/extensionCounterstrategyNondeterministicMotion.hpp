@@ -127,7 +127,17 @@ public:
                     } else if (readMode==1) {
                         variables.push_back(mgr.newVariable());
                         variableNames.push_back(currentLine);
-                        variableTypes.push_back(PreMotionState);
+                        // variableTypes.push_back(PreMotionState);
+                        if (currentLine[0]=='x'){
+                            std::cerr  << " x " << "\n";
+                            variableTypes.push_back(PreMotionStateX);
+                        } else if (currentLine[0]=='y'){
+                            std::cerr << " y " << "\n";
+                            variableTypes.push_back(PreMotionStateY);
+                        } else {
+                            std::cerr << " other " << "\n";
+                            variableTypes.push_back(PreMotionStateOther);
+                        }
                         variables.push_back(mgr.newVariable());
                         variableNames.push_back(currentLine+"'");
                         variableTypes.push_back(PostMotionState);
@@ -148,21 +158,27 @@ public:
                     } else if (readMode==4) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionState);
+                        allowedTypes.insert(PreMotionStateX);
+                        allowedTypes.insert(PreMotionStateY);
+                        allowedTypes.insert(PreMotionStateOther);
                         // allowedTypes.insert(PreMotionControlOutput); -> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         initEnv &= parseBooleanFormula(currentLine,allowedTypes);
                     } else if (readMode==5) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionState);
+                        allowedTypes.insert(PreMotionStateX);
+                        allowedTypes.insert(PreMotionStateY);
+                        allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         initSys &= parseBooleanFormula(currentLine,allowedTypes);
                     } else if (readMode==6) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionState);
+                        allowedTypes.insert(PreMotionStateX);
+                        allowedTypes.insert(PreMotionStateY);
+                        allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
@@ -172,7 +188,9 @@ public:
                     } else if (readMode==7) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionState);
+                        allowedTypes.insert(PreMotionStateX);
+                        allowedTypes.insert(PreMotionStateY);
+                        allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PostMotionControlOutput);
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
@@ -182,7 +200,9 @@ public:
                     } else if (readMode==8) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionState);
+                        allowedTypes.insert(PreMotionStateX);
+                        allowedTypes.insert(PreMotionStateY);
+                        allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
@@ -192,7 +212,9 @@ public:
                     } else if (readMode==9) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionState);
+                        allowedTypes.insert(PreMotionStateX);
+                        allowedTypes.insert(PreMotionStateY);
+                        allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PostMotionControlOutput);
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
@@ -211,7 +233,7 @@ public:
 
         // Invert all order to get the least significant bit first
         for (int i=variables.size()-1;i>=0;i--) {
-            if (variableTypes[i]==PreMotionState)
+            if (variableTypes[i]==PreMotionStateX || variableTypes[i]==PreMotionStateY || variableTypes[i]==PreMotionStateOther)
             varsBDDread.push_back(variables[i]);
         }
         for (int i=variables.size()-1;i>=0;i--) {

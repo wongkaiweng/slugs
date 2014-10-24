@@ -102,6 +102,7 @@ public:
                         foundPaths = livetransitions & (mu0.getValue().SwapVariables(varVectorPre,varVectorPost) | (livenessAssumptions[i]));
                         foundPaths = (safetyEnv & safetySys.Implies(foundPaths)).UnivAbstract(varCubePostOutput);
 
+                        BF_newDumpDot(*this,foundPaths,NULL,"/tmp/foundPaths.dot");
                         // Dump the paths that we just found into 'strategyDumpingData' - store the current goal
                         // with the BDD
                         strategyDumpingData.push_back(boost::make_tuple(i,j,foundPaths));
@@ -130,6 +131,7 @@ public:
 
     // We found the set of winning positions
     winningPositions = mu2.getValue();
+    BF_newDumpDot(*this,winningPositions,NULL,"/tmp/winningPositionsPlayer1.dot");
 }
 
 void checkRealizability() {

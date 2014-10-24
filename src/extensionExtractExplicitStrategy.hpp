@@ -115,7 +115,7 @@ public:
                 }
             }
             positionalStrategiesForTheIndividualGoals[i] = strategy;
-            //BF_newDumpDot(*this,strategy,"PreInput PreOutput PostInput PostOutput","/tmp/generalStrategy.dot");
+            BF_newDumpDot(*this,strategy,"PreInput PreOutput PostInput PostOutput","/tmp/generalStrategy.dot");
         }
 
         // Extract strategy

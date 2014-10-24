@@ -77,7 +77,7 @@ typedef enum {
 
     // Variables used in extensionNondeterministicMotion.hpp
     PreMotionState, PostMotionState, PreOtherOutput, PostOtherOutput,
-    PreMotionControlOutput, PostMotionControlOutput,
+    PreMotionControlOutput, PostMotionControlOutput, PreMotionStateX, PreMotionStateY, PreMotionStateOther,
 
     // Variables used in extensionExtractSymbolicStrategy.hpp
     SymbolicStrategyCounterVar,
@@ -117,6 +117,9 @@ REGISTER_VARIABLE_TYPE_STRING(PostOtherOutput,"PostOtherOutput")
 REGISTER_VARIABLE_TYPE_STRING(PreMotionControlOutput,"PreMotionControlOutput")
 REGISTER_VARIABLE_TYPE_STRING(PostMotionControlOutput,"PostMotionControlOutput")
 REGISTER_VARIABLE_TYPE_STRING(SymbolicStrategyCounterVar,"SymbolicStrategyCounterVariable")
+REGISTER_VARIABLE_TYPE_STRING(PreMotionStateX,"PreMotionStateX")
+REGISTER_VARIABLE_TYPE_STRING(PreMotionStateY,"PreMotionStateY")
+REGISTER_VARIABLE_TYPE_STRING(PreMotionStateOther,"PreMotionStateOther")
 
 //! Variable hierarchy. Allows to include subgrouped variables when computing variable
 //! vectors and cubes
@@ -152,6 +155,9 @@ REGISTER_VARIABLE_TYPE_HIERARCHY(PreOtherOutput,PreOutput)
 REGISTER_VARIABLE_TYPE_HIERARCHY(PostOtherOutput,PostOutput)
 REGISTER_VARIABLE_TYPE_HIERARCHY(PreMotionControlOutput,PreOutput)
 REGISTER_VARIABLE_TYPE_HIERARCHY(PostMotionControlOutput,PostOutput)
+REGISTER_VARIABLE_TYPE_HIERARCHY(PreMotionStateX,PreMotionState)
+REGISTER_VARIABLE_TYPE_HIERARCHY(PreMotionStateY,PreMotionState)
+REGISTER_VARIABLE_TYPE_HIERARCHY(PreMotionStateOther,PreMotionState)
 // REGISTER_VARIABLE_TYPE_HIERARCHY(PreMotionState,PreInput)
 // REGISTER_VARIABLE_TYPE_HIERARCHY(PostMotionState,PostInput)
 

@@ -127,12 +127,12 @@ public:
                     safetyEnv &= candidateEnvTrans;
                     safetySys &= candidateSysTrans;
 
-                    std::stringstream fname3;
-                    fname3 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
-                    BF_newDumpDot(*this,candidateEnvTrans,NULL,fname3.str());
-                    std::stringstream fname4;
-                    fname4 << "/tmp/addedSafetySys" << iter << "index" << idx << ".dot";
-                    BF_newDumpDot(*this,candidateSysTrans,NULL,fname4.str());
+                    // std::stringstream fname3;
+                    // fname3 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
+                    // BF_newDumpDot(*this,candidateEnvTrans,NULL,fname3.str());
+                    // std::stringstream fname4;
+                    // fname4 << "/tmp/addedSafetySys" << iter << "index" << idx << ".dot";
+                    // BF_newDumpDot(*this,candidateSysTrans,NULL,fname4.str());
                     // std::stringstream fname3;
                     // fname3 << "/tmp/safetyEnvAfter" << iter << "index" << idx << ".dot";
                     // BF_newDumpDot(*this,safetyEnv,NULL,fname3.str());

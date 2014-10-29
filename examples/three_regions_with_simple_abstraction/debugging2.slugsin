@@ -22,6 +22,10 @@ vybit
 #| ! & & & ! xbit0 ybit0 ! vxbit ! vybit ! door'
 #| ! & & & ! xbit0 ybit0 vxbit vybit ! door'
 
+| ! & & & ! xbit0 ybit0 ! vxbit vybit ! door'
+| ! & & & ! xbit0 ybit0 vxbit vybit ! door'
+| ! & & & xbit0 ! ybit0 vxbit ! vybit ! door'
+
 [ENV_LIVENESS]
 ! door
 #| ! & & & ! xbit0 ybit0 vxbit vybit ! door'
@@ -32,6 +36,12 @@ vybit
 [SYS_TRANS]
 | ! door' ! & ! xbit0' ! ybit0'
 | ! door' ! & xbit0' ybit0'
+#| ! door' ! & & & ! xbit0' ybit0' ! vxbit' ! vybit'
+#| ! door' ! & & & ! xbit0' ybit0' vxbit' vybit'
+
+| ! door' ! & & & ! xbit0' ybit0' ! vxbit' vybit'
+| ! door' ! & & & ! xbit0' ybit0' vxbit' vybit'
+| ! door' ! & & & xbit0' ! ybit0' vxbit' ! vybit'
 
 [SYS_LIVENESS]
 & ! xbit0 ! ybit0

@@ -1,0 +1,72 @@
+[INPUT]
+s
+rc0
+rc1
+rc2
+rc3
+
+[OUTPUT]
+r0
+r1
+r2
+r3
+
+[ENV_INIT]
+1
+
+[ENV_TRANS]
+| ! | rc2' rc3' ! s'
+#| ! rc1' ! s'
+
+#HOW CAN THE MOTION CONTROLLERS RESOLVE: this is where the nondet would come in
+
+# staying in place
+| ! & rc0 r0 rc0'
+| ! & rc1 r1 rc1'
+| ! & rc2 r2 rc2'
+| ! & rc3 r3 rc3'
+
+#possible movement
+| ! & rc0 r1 | rc0' rc1'
+| ! & rc1 r0 | rc0' rc1'
+| ! & rc1 r2 | rc1' rc2'
+| ! & rc2 r1 | rc1' rc2'
+| ! & rc2 r3 | rc2' rc3'
+| ! & rc3 r2 | rc2' rc3'
+
+# MUTUAL EXCLUSION
+| | | rc0' rc1' rc2' rc3'
+| ! rc0' ! | | rc1' rc2' rc3'
+| ! rc1' ! | | rc0' rc2' rc3'
+| ! rc2' ! | | rc0' rc1' rc3'
+| ! rc3' ! | | rc0' rc1' rc2'
+
+[ENV_LIVENESS]
+! s
+
+# MOTION COMPLETION
+| | | & r0 rc0' & r1 rc1' & r2 rc2' & r3 rc3'
+
+[SYS_INIT]
+1
+
+[SYS_TRANS]
+| ! s' ! | rc2' rc3'
+#| ! s' ! rc1'
+
+# HOW CAN THE MOTION CONTROLLERS BE ACTIVATED?
+| ! rc0 | r0' r1'
+| ! rc1 | | r0' r1' r2'
+| ! rc2 | | r1' r2' r3'
+| ! rc3 | r2' rc3'
+
+# MUTUAL EXCLUSION
+| | | r0' r1' r2' r3'
+| ! r0' ! | | r1' r2' r3'
+| ! r1' ! | | r0' r2' r3'
+| ! r2' ! | | r0' r1' r3'
+| ! r3' ! | | r0' r1' r2'
+
+[SYS_LIVENESS]
+rc0
+| rc2 rc3

@@ -127,17 +127,14 @@ public:
                     } else if (readMode==1) {
                         variables.push_back(mgr.newVariable());
                         variableNames.push_back(currentLine);
-                        // variableTypes.push_back(PreMotionState);
-                        if (currentLine[0]=='x'){
-                            std::cerr  << " x " << "\n";
-                            variableTypes.push_back(PreMotionStateX);
-                        } else if (currentLine[0]=='y'){
-                            std::cerr << " y " << "\n";
-                            variableTypes.push_back(PreMotionStateY);
-                        } else {
-                            std::cerr << " other " << "\n";
-                            variableTypes.push_back(PreMotionStateOther);
-                        }
+                        variableTypes.push_back(PreMotionState);
+                        // if (currentLine[0]=='x'){
+                        //     variableTypes.push_back(PreMotionStateX);
+                        // } else if (currentLine[0]=='y'){
+                        //     variableTypes.push_back(PreMotionStateY);
+                        // } else {
+                        //     variableTypes.push_back(PreMotionStateOther);
+                        // }
                         variables.push_back(mgr.newVariable());
                         variableNames.push_back(currentLine+"'");
                         variableTypes.push_back(PostMotionState);
@@ -158,27 +155,30 @@ public:
                     } else if (readMode==4) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionStateX);
-                        allowedTypes.insert(PreMotionStateY);
-                        allowedTypes.insert(PreMotionStateOther);
+                        allowedTypes.insert(PreMotionState);
+                        // allowedTypes.insert(PreMotionStateX);
+                        // allowedTypes.insert(PreMotionStateY);
+                        // allowedTypes.insert(PreMotionStateOther);
                         // allowedTypes.insert(PreMotionControlOutput); -> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         initEnv &= parseBooleanFormula(currentLine,allowedTypes);
                     } else if (readMode==5) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionStateX);
-                        allowedTypes.insert(PreMotionStateY);
-                        allowedTypes.insert(PreMotionStateOther);
+                        allowedTypes.insert(PreMotionState);
+                        // allowedTypes.insert(PreMotionStateX);
+                        // allowedTypes.insert(PreMotionStateY);
+                        // allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         initSys &= parseBooleanFormula(currentLine,allowedTypes);
                     } else if (readMode==6) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionStateX);
-                        allowedTypes.insert(PreMotionStateY);
-                        allowedTypes.insert(PreMotionStateOther);
+                        allowedTypes.insert(PreMotionState);
+                        // allowedTypes.insert(PreMotionStateX);
+                        // allowedTypes.insert(PreMotionStateY);
+                        // allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
@@ -188,9 +188,10 @@ public:
                     } else if (readMode==7) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionStateX);
-                        allowedTypes.insert(PreMotionStateY);
-                        allowedTypes.insert(PreMotionStateOther);
+                        allowedTypes.insert(PreMotionState);
+                        // allowedTypes.insert(PreMotionStateX);
+                        // allowedTypes.insert(PreMotionStateY);
+                        // allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PostMotionControlOutput);
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
@@ -200,9 +201,10 @@ public:
                     } else if (readMode==8) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionStateX);
-                        allowedTypes.insert(PreMotionStateY);
-                        allowedTypes.insert(PreMotionStateOther);
+                        allowedTypes.insert(PreMotionState);
+                        // allowedTypes.insert(PreMotionStateX);
+                        // allowedTypes.insert(PreMotionStateY);
+                        // allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PreMotionControlOutput); //-> Is not taken into account
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
@@ -212,9 +214,10 @@ public:
                     } else if (readMode==9) {
                         std::set<VariableType> allowedTypes;
                         allowedTypes.insert(PreInput);
-                        allowedTypes.insert(PreMotionStateX);
-                        allowedTypes.insert(PreMotionStateY);
-                        allowedTypes.insert(PreMotionStateOther);
+                        allowedTypes.insert(PreMotionState);
+                        // allowedTypes.insert(PreMotionStateX);
+                        // allowedTypes.insert(PreMotionStateY);
+                        // allowedTypes.insert(PreMotionStateOther);
                         allowedTypes.insert(PostMotionControlOutput);
                         allowedTypes.insert(PreOtherOutput);
                         allowedTypes.insert(PostInput);
@@ -233,7 +236,8 @@ public:
 
         // Invert all order to get the least significant bit first
         for (int i=variables.size()-1;i>=0;i--) {
-            if (variableTypes[i]==PreMotionStateX || variableTypes[i]==PreMotionStateY || variableTypes[i]==PreMotionStateOther)
+            if (variableTypes[i]==PreMotionState)
+            // if (variableTypes[i]==PreMotionStateX || variableTypes[i]==PreMotionStateY || variableTypes[i]==PreMotionStateOther)
             varsBDDread.push_back(variables[i]);
         }
         for (int i=variables.size()-1;i>=0;i--) {
@@ -400,9 +404,9 @@ void checkRealizability() {
         // result = (robotBDD & initEnv & initSys & winningPositions).UnivAbstract(varCubePreMotionState).ExistAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
     } else {
         // BF robotAllowedPreMoves = robotBDD.ExistAbstract(varCubePre).SwapVariables(varVectorPre,varVectorPost);
-        result = (initEnv & initSys.Implies(winningPositions)).UnivAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
+        // result = (initEnv & initSys.Implies(winningPositions)).UnivAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
         // result = (robotBDD & robotAllowedPreMoves & initEnv & initSys & winningPositions).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
-        // result = (initEnv & initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
+        result = (initEnv & initSys.Implies(winningPositions)).ExistAbstract(varCubePreMotionState).UnivAbstract(varCubePreControllerOutput).ExistAbstract(varCubePreInput);
         BF_newDumpDot(*this,result,NULL,"/tmp/resultCounterStrategy.dot");
     }
 

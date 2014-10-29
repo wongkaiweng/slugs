@@ -520,7 +520,7 @@ def actionLoop():
             plthdl2.set_ydata(np.append(plthdl2.get_ydata(), y))
             plthdl2.set_marker('o')
             plthdl2.set_linestyle('None')
-            plthdl2.set_markerfacecolor('r')
+            plthdl2.set_markerfacecolor('b')
         else:
             plthdl1.set_xdata(np.append(plthdl1.get_xdata(), x))
             plthdl1.set_ydata(np.append(plthdl1.get_ydata(), y))

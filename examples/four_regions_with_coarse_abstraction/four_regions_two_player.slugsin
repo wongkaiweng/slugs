@@ -1,0 +1,32 @@
+[INPUT]
+s
+
+[OUTPUT]
+r0
+r1
+r2
+r3
+
+[ENV_INIT]
+1
+
+[ENV_TRANS]
+| ! | r2 r3 ! s'
+#| ! r1 ! s'
+
+[ENV_LIVENESS]
+! s
+
+[SYS_INIT]
+| | | & & & r0 ! r1 ! r2 ! r3 & & & ! r0 r1 ! r2 ! r3 & & & ! r0 ! r1 r2 ! r3 & & & ! r0 ! r1 ! r2 r3
+
+[SYS_TRANS]
+| ! s' ! | r2' r3'
+#| ! s' ! r1'
+
+# transition system
+| | | & & & & r0 ! r1 ! r2 ! r3 | & & & r0' ! r1' ! r2' ! r3' & & & ! r0' r1' ! r2' ! r3' & & & & ! r0 r1 ! r2 ! r3 & & & ! r0' ! r1' r2' ! r3' & & & & ! r0 ! r1 r2 ! r3 | & & & ! r0' r1' ! r2' ! r3' & & & ! r0' ! r1' r2' ! r3' & & & & ! r0 ! r1 ! r2 r3 | & & & ! r0' r1' ! r2' ! r3' & & & ! r0' ! r1' ! r2' r3' 
+
+[SYS_LIVENESS]
+r0
+| r2 r3

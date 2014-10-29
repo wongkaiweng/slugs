@@ -150,25 +150,23 @@ public:
                     yDecimalValue.push_back(0.0);
                     int xCounter = 0;
                     int yCounter = 0;
-                    std::cerr << " PreMotionStateX" << PreMotionStateX << "\n";
-                    std::cerr << " PreMotionStateY" << PreMotionStateY << "\n";
+                    double eta = 0.15;
                     for (unsigned int i=0;i<variables.size();i++) {
-                        std::cerr << " variableTypes[i]" << variableTypes[i] << "\n";
                         if (variableTypes[i]==PreMotionStateX) {
-                            std::cerr << "PreMotionStateX found at" << counter << " i" << i << "\n";
+                            // std::cerr << "PreMotionStateX found at" << counter << " i" << i << "\n";
                             if (!(variables[i] & flaggedMotion).isFalse()) {
-                                xDecimalValue[counter] += pow(2, xCounter);
+                                xDecimalValue[counter] += pow(2, xCounter) * eta;
                             }
                         }
                         if (variableTypes[i]==PreMotionStateY) {
-                            std::cerr << "PreMotionStateY found at" << counter << " i" << i << "\n";
+                            // std::cerr << "PreMotionStateY found at" << counter << " i" << i << "\n";
                             if (!(variables[i] & flaggedMotion).isFalse()) {
-                                yDecimalValue[counter] += pow(2, yCounter);
+                                yDecimalValue[counter] += pow(2, yCounter) * eta;
                             }
                         }
                     }
-                    std::cerr << "xDecimalValue[" << counter << "] " << xDecimalValue[counter] << "\n";
-                    std::cerr << "yDecimalValue[" << counter << "] " << yDecimalValue[counter] << "\n";
+                    // std::cerr << "xDecimalValue[" << counter << "] " << xDecimalValue[counter] << "\n";
+                    // std::cerr << "yDecimalValue[" << counter << "] " << yDecimalValue[counter] << "\n";
 
                     // std::stringstream fname3;
                     // fname3 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
@@ -202,7 +200,7 @@ public:
 
             std::cerr << "Deadlock revisions found.\nWhen within " << maxDist << " of station_1, never set environment variable s1_occupied to True.\nAccept? (y/n)";
             char userResponse = 'y';
-            std::cin >> userResponse;
+            // std::cin >> userResponse;
             if (userResponse == 'y') {
                 safetySys &= safetySysTent;
                 safetyEnv &= safetyEnvTent;
@@ -223,6 +221,7 @@ public:
         // Mark states for which the counterstrategy has post inputs that are NOT winning for player 1, and enumerate those inputs.
         //   TODO: can do this post input quantification for the deadlock case also?
         BF candidateAll = mgr.constantFalse();
+        BF candidateGuarAll = mgr.constantFalse();
         if (!realizable) {
         // if (false){
             std::cerr << "adding liveness assumptions and re-synthesizing the counter-strategy\n";
@@ -245,7 +244,8 @@ public:
                     TODO &= !cutAssignment;
                     BF cutPre = cutAssignment.ExistAbstract(varCubePost);
                     BF cutPost = cutAssignment.ExistAbstract(varCubePre);
-                    BF candidate = cutPre.Implies(cutPost);
+                    // BF candidate = cutPre.Implies(cutPost);
+                    BF candidate = cutPre & !cutPost;
                     int OKtoAdd = true;
                     if (!((safetySys & candidate.SwapVariables(varVectorPre,varVectorPost)).isFalse())){ // if the candidate satisfies the system transition
                         for (unsigned int i=0;i<livenessAssumptions.size();i++) {
@@ -272,6 +272,7 @@ public:
                     if (OKtoAdd){
                         // livenessAssumptions.push_back(candidate);
                         candidateAll |= candidate;
+                        candidateGuarAll |= cutPre;
                         std::stringstream fname;
                         fname << "/tmp/addedLivenessAssumptions" << iter << "p" << boost::get<0>(*it) << "index" << idx << ".dot";
                         BF_newDumpDot(*this,candidate,NULL,fname.str());      
@@ -282,6 +283,7 @@ public:
                 iter++;
             }
             livenessAssumptions.push_back(candidateAll); 
+            livenessGuarantees.push_back(candidateGuarAll);
             // BF_newDumpDot(*this,livenessAssumptions.back(),NULL,"/tmp/livenessAssumptionsLast.dot");
 
             T::execute();

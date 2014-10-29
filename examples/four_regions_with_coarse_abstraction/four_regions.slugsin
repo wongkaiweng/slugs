@@ -25,9 +25,13 @@ rc3
 
 [ENV_LIVENESS]
 ! s
+#! | r0 r1
+
+# MOTION COMPLETION
+| | | & rc0 r0 & rc1 r1 & rc2 r2 & rc3 r3
 
 [SYS_INIT]
-1
+r0
 
 [SYS_TRANS]
 | ! s' ! | r2' r3'

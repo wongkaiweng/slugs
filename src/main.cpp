@@ -56,6 +56,7 @@
 #include "extensionNondeterministicMotion.hpp"
 #include "extensionExtractSymbolicStrategy.hpp"
 #include "extensionTwoDimensionalCost.hpp"
+#include "extensionInteractiveStrategyLoadBdd.hpp"
 
 //===================================================================================
 // List of command line arguments
@@ -83,7 +84,8 @@ const char *commandLineArguments[] = {
     "--extractExplicitPermissiveStrategy","Computes an explicit-state permissive strategy.",
     "--computeIncompleteInformationEstimator","Computes a imcomplete-information state estimation controller.",
     "--nonDeterministicMotion","Computes a controller using an non-deterministic motion abstraction.",
-    "--twoDimensionalCost","Computes a controller that optimizes for waiting and action cost at the same time."
+    "--twoDimensionalCost","Computes a controller that optimizes for waiting and action cost at the same time.",
+    "--interactiveStrategyLoadBDD","extension of interactive Strategy where you can give bdd as an input"
 };
 
 //===================================================================================
@@ -164,8 +166,8 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--sysInitRoboticsSemantics --twoDimensionalCost",XExtractExplicitStrategy<XTwoDimensionalCost<XRoboticsSemantics<GR1Context> >,false>::makeInstance),
     OptionCombination("--simpleRecovery --sysInitRoboticsSemantics --twoDimensionalCost",XExtractExplicitStrategy<XTwoDimensionalCost<XRoboticsSemantics<GR1Context> >,true>::makeInstance),
     OptionCombination("--symbolicStrategy --sysInitRoboticsSemantics --twoDimensionalCost",XExtractSymbolicStrategy<XTwoDimensionalCost<XRoboticsSemantics<GR1Context> >,false>::makeInstance),
-    OptionCombination("--simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --twoDimensionalCost",XExtractSymbolicStrategy<XTwoDimensionalCost<XRoboticsSemantics<GR1Context> >,true>::makeInstance)
-
+    OptionCombination("--simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --twoDimensionalCost",XExtractSymbolicStrategy<XTwoDimensionalCost<XRoboticsSemantics<GR1Context> >,true>::makeInstance),
+	OptionCombination("--interactiveStrategyLoadBDD",XInteractiveStrategyLoadBDD<GR1Context>::makeInstance)
     // TODO: Combination between BiasForAction and FixedPointRecycling is not supported yet but would make sense
 };
 

@@ -106,11 +106,16 @@ public:
             std::stringstream fname2;
             fname2 << "/tmp/safetyEnvBefore" << iter << ".dot";
             BF_newDumpDot(*this,safetyEnv,NULL,fname2.str());
-
+            // BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsBefore.dot");
 
             BF TODO = failingPreAndPostConditions;
             int idx = 0;
+            int counter = 0;
             bool foundRevisions = false;
+            std::vector<double> xDecimalValue;
+            std::vector<double> yDecimalValue;
+            BF safetyEnvTent = mgr.constantTrue();
+            BF safetySysTent = mgr.constantTrue();
             while (!TODO.isFalse()){
                 BF deadAssignment = determinize(TODO,preControllerOutputVars);
                 deadAssignment = determinize(deadAssignment,preMotionStateVars);
@@ -124,8 +129,32 @@ public:
 
                 if (((safetyEnv.ExistAbstract(varCubePostInput)) & !((safetyEnv & candidateEnvTrans).ExistAbstract(varCubePostInput))).isFalse()) {
                     foundRevisions = true;
-                    safetyEnv &= candidateEnvTrans;
-                    safetySys &= candidateSysTrans;
+                    safetyEnvTent &= candidateEnvTrans;
+                    safetySysTent &= candidateSysTrans;
+
+                    BF flaggedMotion = deadlockPre.ExistAbstract(varCubePreControllerOutput);
+
+                    xDecimalValue.push_back(0.0);
+                    yDecimalValue.push_back(0.0);
+                    int xCounter = 0;
+                    int yCounter = 0;
+                    double eta = 0.15;
+                    for (unsigned int i=0;i<variables.size();i++) {
+                        if (variableTypes[i]==PreMotionStateX) {
+                            // std::cerr << "PreMotionStateX found at" << counter << " i" << i << "\n";
+                            if (!(variables[i] & flaggedMotion).isFalse()) {
+                                xDecimalValue[counter] += pow(2, xCounter) * eta;
+                            }
+                        }
+                        if (variableTypes[i]==PreMotionStateY) {
+                            // std::cerr << "PreMotionStateY found at" << counter << " i" << i << "\n";
+                            if (!(variables[i] & flaggedMotion).isFalse()) {
+                                yDecimalValue[counter] += pow(2, yCounter) * eta;
+                            }
+                        }
+                    }
+                    // std::cerr << "xDecimalValue[" << counter << "] " << xDecimalValue[counter] << "\n";
+                    // std::cerr << "yDecimalValue[" << counter << "] " << yDecimalValue[counter] << "\n";
 
                     // std::stringstream fname3;
                     // fname3 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
@@ -139,7 +168,9 @@ public:
                     // std::stringstream fname4;
                     // fname4 << "/tmp/safetySysAfter" << iter << "index" << idx << ".dot";
                     // BF_newDumpDot(*this,safetySys,NULL,fname4.str());
-                    std::cerr << idx << " ";
+                    
+                    // std::cerr << idx << " ";
+                    counter++;
                 }
                 idx++;
             }
@@ -147,45 +178,21 @@ public:
             if (!foundRevisions) {throw SlugsException(false,"Error: could not find any refinements!\n");}
             std::cerr << "\n";
 
-            // // BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/candidateWinningPreConditionsBefore.dot");
-            // // BF TODO = failingPreAndPostConditions;
-            // BF deadAssignment = failingPreAndPostConditions;
-            // int idx = 0;
-            // // while (!TODO.isFalse()){
-            // //     BF deadAssignment = determinize(TODO,preControllerOutputVars);
-            // //     deadAssignment = determinize(deadAssignment,preMotionStateVars);
-            // //     deadAssignment = determinize(deadAssignment,postInputVars);
-            // //     TODO &= !deadAssignment;
+            double maxDist = 0.0;
+            for (unsigned int i=0;i<counter;i++) {
+                for (unsigned int j=0;j<counter;j++) {
+                    double currDist = sqrt(pow(xDecimalValue[i] - xDecimalValue[j],2) + pow(yDecimalValue[i] - yDecimalValue[j],2));
+                    if (currDist > maxDist) {maxDist = currDist;}
+                }
+            }
 
-            //     BF deadlockPre = deadAssignment.ExistAbstract(varCubePost);
-            //     BF deadlockPost = deadAssignment.ExistAbstract(varCubePre);
-
-            //     // std::stringstream fname1;
-            //     // fname1 << "/tmp/failingPreAndPostConditions" << idx << ".dot";
-            //     // BF_newDumpDot(*this,failingPreAndPostConditions,NULL,fname1.str());
-
-            //     BF candidateEnvTrans = deadlockPre.Implies(!deadlockPost);
-            //     BF candidateSysTrans = deadlockPost.Implies(!deadlockPre.SwapVariables(varVectorPre,varVectorPost));
-            //     if (!(candidateEnvTrans & safetyEnv).isFalse()) { //TODO: liveness too
-            //         safetyEnv &= candidateEnvTrans;
-            //         safetySys &= candidateSysTrans;
-
-            //         // std::stringstream fname1;
-            //         // fname1 << "/tmp/addedSafetyEnv" << iter << "index" << idx << ".dot";
-            //         // BF_newDumpDot(*this,candidateEnvTrans,NULL,fname1.str());
-            //         // std::stringstream fname2;
-            //         // fname2 << "/tmp/addedSafetySys" << iter << "index" << idx << ".dot";
-            //         // BF_newDumpDot(*this,candidateSysTrans,NULL,fname2.str());
-            //         // std::stringstream fname3;
-            //         // fname3 << "/tmp/safetyEnvAfter" << iter << "index" << idx << ".dot";
-            //         // BF_newDumpDot(*this,safetyEnv,NULL,fname3.str());
-            //         // std::stringstream fname4;
-            //         // fname4 << "/tmp/safetySysAfter" << iter << "index" << idx << ".dot";
-            //         // BF_newDumpDot(*this,safetySys,NULL,fname4.str());
-            //     }
-            //     else {std::cerr << "Warning: A candidate transition statement was not added.\n";}   
-            //     idx++;
-            // // }
+            // std::cerr << "Deadlock revisions found.\nWhen within " << maxDist << " of station_1, never set environment variable s1_occupied to True.\nAccept? (y/n)";
+            char userResponse = 'y';
+            // std::cin >> userResponse;
+            if (userResponse == 'y') {
+                safetySys &= safetySysTent;
+                safetyEnv &= safetyEnvTent;
+            }
 
             // prepare the variables for a new round of fixedpoint computations
             failingPreAndPostConditions = mgr.constantFalse();
@@ -202,6 +209,7 @@ public:
         // Mark states for which the counterstrategy has post inputs that are NOT winning for player 1, and enumerate those inputs.
         //   TODO: can do this post input quantification for the deadlock case also?
         BF candidateAll = mgr.constantFalse();
+        BF candidateGuarAll = mgr.constantFalse();
         if (!realizable) {
         // if (false){
             std::cerr << "adding liveness assumptions and re-synthesizing the counter-strategy\n";
@@ -224,7 +232,8 @@ public:
                     TODO &= !cutAssignment;
                     BF cutPre = cutAssignment.ExistAbstract(varCubePost);
                     BF cutPost = cutAssignment.ExistAbstract(varCubePre);
-                    BF candidate = cutPre.Implies(cutPost);
+                    // BF candidate = cutPre.Implies(cutPost);
+                    BF candidate = cutPre & !cutPost;
                     int OKtoAdd = true;
                     if (!((safetySys & candidate.SwapVariables(varVectorPre,varVectorPost)).isFalse())){ // if the candidate satisfies the system transition
                         for (unsigned int i=0;i<livenessAssumptions.size();i++) {
@@ -251,6 +260,7 @@ public:
                     if (OKtoAdd){
                         // livenessAssumptions.push_back(candidate);
                         candidateAll |= candidate;
+                        candidateGuarAll |= cutPre;
                         std::stringstream fname;
                         fname << "/tmp/addedLivenessAssumptions" << iter << "p" << boost::get<0>(*it) << "index" << idx << ".dot";
                         BF_newDumpDot(*this,candidate,NULL,fname.str());      
@@ -261,6 +271,7 @@ public:
                 iter++;
             }
             livenessAssumptions.push_back(candidateAll); 
+            livenessGuarantees.push_back(candidateGuarAll);
             // BF_newDumpDot(*this,livenessAssumptions.back(),NULL,"/tmp/livenessAssumptionsLast.dot");
 
             T::execute();

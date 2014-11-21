@@ -1,0 +1,68 @@
+[INPUT]
+door
+
+[MOTION STATE OUTPUT]
+xbit0
+xbit1
+ybit0
+ybit1
+vxbit
+vybit
+
+[MOTION CONTROLLER OUTPUT]
+axbit
+aybit
+
+[OTHER OUTPUT]
+
+
+[ENV_INIT]
+! door
+& & & & & xbit0 xbit1 ybit0 ybit1 ! vxbit ! vybit
+
+[ENV_TRANS]
+| ! & & & xbit0 xbit1 ybit0 ybit1 ! door'
+| ! & & & ! xbit0 ! xbit1 ! ybit0 ! ybit1 ! door'
+
+# iter 1a
+#| ! & & & & & & & ! xbit0 xbit1 ! ybit0 ybit1 vxbit vybit axbit aybit ! door'
+#| ! & & & & & & & ! xbit0 xbit1 ybit0 ybit1 vxbit ! vybit axbit ! aybit ! door'
+#| ! & & & & & & & ! xbit0 xbit1 ybit0 ybit1 vxbit vybit axbit aybit ! door'
+#| ! & & & & & & & xbit0 ! xbit1 ! ybit0 ! ybit1 ! vxbit ! vybit ! axbit ! aybit ! door'
+#| ! & & & & & & & ! xbit0 ! xbit1 ybit0 ! ybit1 ! vxbit ! vybit ! axbit ! aybit ! door'
+#| ! & & & & & & & ! xbit0 ! xbit1 ybit0 ! ybit1 vxbit ! vybit axbit ! aybit ! door'
+#| ! & & & & & & & xbit0 xbit1 ! ybit0 ybit1 ! vxbit vybit ! axbit aybit ! door'
+#| ! & & & & & & & xbit0 xbit1 ! ybit0 ybit1 vxbit vybit axbit aybit ! door'
+
+[ENV_LIVENESS]
+! door
+
+# iter 2
+#& & & & xbit1 ybit1 vxbit vybit ! door
+#& & & & xbit1 ybit1 vxbit ! vybit ! door
+#& & & & & xbit1 ybit0 ybit1 vxbit vybit ! door
+#& & & & & ! xbit1 ! ybit0 ! ybit1 ! vxbit ! vybit ! door
+#& & & & ! xbit1 ! ybit1 vxbit ! vybit ! door
+#& & & & xbit1 ybit1 ! vxbit vybit ! door
+#& & & & & xbit0 xbit1 ybit1 vxbit vybit ! door
+
+[SYS_INIT]
+1
+
+[SYS_TRANS]
+| ! door' ! & & & xbit0' xbit1' ybit0' ybit1'
+| ! door' ! & & & ! xbit0' ! xbit1' ! ybit0' ! ybit1'
+
+# iter 1b
+#| ! door' ! & & & & & & & ! xbit0' xbit1' ! ybit0' ybit1' vxbit' vybit' axbit' aybit'
+#| ! door' ! & & & & & & & ! xbit0' xbit1' ybit0' ybit1' vxbit' ! vybit' axbit' ! aybit'
+#| ! door' ! & & & & & & & ! xbit0' xbit1' ybit0' ybit1' vxbit' vybit' axbit' aybit'
+#| ! door' ! & & & & & & & xbit0' ! xbit1' ! ybit0' ! ybit1' ! vxbit' ! vybit' ! axbit' ! aybit'
+#| ! door' ! & & & & & & & ! xbit0' ! xbit1' ybit0' ! ybit1' ! vxbit' ! vybit' ! axbit' ! aybit'
+#| ! door' ! & & & & & & & ! xbit0' ! xbit1' ybit0' ! ybit1' vxbit' ! vybit' axbit' ! aybit'
+#| ! door' ! & & & & & & & xbit0' xbit1' ! ybit0' ybit1' ! vxbit' vybit' ! axbit' aybit'
+#| ! door' ! & & & & & & & xbit0' xbit1' ! ybit0' ybit1' vxbit' vybit' axbit' aybit'
+
+[SYS_LIVENESS]
+& & & ! xbit0 ! xbit1 ! ybit0 ! ybit1
+& & & xbit0 xbit1 ybit0 ybit1

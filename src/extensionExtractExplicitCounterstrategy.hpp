@@ -43,7 +43,7 @@ protected:
 
     //foundCutPostConditions will eventually contain transitions that prevent the
     //counterstrategy from enforcing livelock/deadlock
-    BF foundCutPostConditions = mgr.constantFalse(); 
+    BF foundCutPostConditions = mgr.constantTrue(); 
     BF candidateFailingPreConditions = mgr.constantFalse();
 
     XExtractExplicitCounterStrategy<T>(std::list<std::string> &filenames) : T(filenames) {

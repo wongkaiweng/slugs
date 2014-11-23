@@ -41,7 +41,9 @@ protected:
     using T::postOutputVars;
     using T::doesVariableInheritType;
 
-    BF foundCutPostConditions = mgr.constantFalse();
+    //foundCutPostConditions will eventually contain transitions that prevent the
+    //counterstrategy from enforcing livelock/deadlock
+    BF foundCutPostConditions = mgr.constantFalse(); 
     BF candidateFailingPreConditions = mgr.constantFalse();
 
     XExtractExplicitCounterStrategy<T>(std::list<std::string> &filenames) : T(filenames) {
@@ -185,8 +187,10 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
             // save any combination of pre variables and post inputs found that are not included in player 1's strategy
             BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitions.dot");
-            BF foundCutConditions = (!remainingTransitions.ExistAbstract(varCubePre)) & remainingTransitions.ExistAbstract(varCubePost);
-            candidateFailingPreConditions |= remainingTransitions;
+	    
+            //BF foundCutConditions = (!remainingTransitions.ExistAbstract(varCubePre)) & remainingTransitions.ExistAbstract(varCubePost);
+            foundCutPostConditions &= (remainingTransitions.ExistAbstract(varCubePost)).Implies(!remainingTransitions.ExistAbstract(varCubePre));
+	    //candidateFailingPreConditions |= remainingTransitions;
             BF_newDumpDot(*this,!(remainingTransitions).ExistAbstract(varCubePre),NULL,"/tmp/candidateWinningThisState.dot");
             std::stringstream ss1;
             std::stringstream ss2;
@@ -203,11 +207,12 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
             // Switching goals
             while (!(remainingTransitions & safetySys).isFalse()) {
 
+	      
                 BF safeTransition = remainingTransitions & safetySys;
                 BF newCombination = determinize(safeTransition, postOutputVars);
 
-                foundCutPostConditions |= foundCutConditions & newCombination.ExistAbstract(varCubePre).ExistAbstract(varCubePostInput);
-
+                //foundCutPostConditions |= foundCutConditions & newCombination.ExistAbstract(varCubePre).ExistAbstract(varCubePostInput);
+		  
                 // Jump as much forward  in the liveness assumption list as possible ("stuttering avoidance")
                 unsigned int nextLivenessAssumption = current.second.first;
                 bool firstTry = true;
@@ -261,8 +266,10 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     BF newCombination = determinize(targetPositionCandidateSet, postVars) ;
     
     newCombination  = newCombination.ExistAbstract(varCubePreOutput).SwapVariables(varVectorPre,varVectorPost);
-    
-    
+
+    unsigned int stateNum = lookupTableForPastStates[current];
+    BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];
+    foundCutPostConditions &= currentPossibilities.Implies(!newCombination.SwapVariables(varVectorPost,varVectorPre));
     
     std::pair<size_t, std::pair<unsigned int, unsigned int> > target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(current.second.first, current.second.second));
     unsigned int tn;

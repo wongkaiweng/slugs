@@ -84,8 +84,46 @@ void execute() {
                 of.close();
             }
         }
+        extractClausesFromBF(foundCutPostConditions);
         BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/foundCutPostConditions.dot");
         BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
+}
+
+std::string combineStrArray(std::vector<std::string> strArray, char* delimiter) {
+    // This function combines a vector of strings together with the key.
+    // similar to the join function in python
+    std::stringstream ss;
+    auto end = strArray.end();
+    if (!strArray.empty()) { --end;}
+    std::copy(strArray.begin(), end, std::ostream_iterator<std::string>(ss, delimiter));
+    if (!strArray.empty()) {ss << *end;}
+
+    return ss.str();
+}
+
+void extractClausesFromBF(BF bddForConversion){
+    // This function extraction a clause with only preVars from bdd.
+    // This only work for single chain BDD now.
+
+    std::vector<std::string> clauseSegmentArray;
+    for (unsigned int i=0;i<variables.size();i++) {
+
+        if ((bddForConversion & variables[i]).isFalse()) { //(!a&b)&a = False
+            clauseSegmentArray.push_back("!"+variableNames[i]);
+            std::cout << variableNames[i] <<":0 " << std::endl; // of value 0
+
+        } else if ((bddForConversion & !variables[i]).isFalse()) { //(a&b)&!a = False
+            clauseSegmentArray.push_back(variableNames[i]);
+            std::cout << variableNames[i] <<":1 " << std::endl; // of value 1
+
+        } else {
+            std::cout << variableNames[i] <<":-1 " << std::endl; // don't care
+        }
+    }
+
+    // print to terminal the clause
+    char delimiter[] = " & ";
+    std::cout << combineStrArray(clauseSegmentArray, delimiter);
 }
 
     
@@ -146,7 +184,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         todoInit &= !concreteState;
         todoList.push_back(lookup);
     }
-    std::vector<std::string> negatedDeadlockPattern;
+    std::vector<std::string> negatedDeadlockPatternsArray;
     // Extract strategy
     while (todoList.size()>0) {
         std::pair<size_t, std::pair<unsigned int, unsigned int> > current = todoList.front();
@@ -174,7 +212,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         // Can we enforce a deadlock?
         BF deadlockInput = (currentPossibilities & safetyEnv & !safetySys).UnivAbstract(varCubePostOutput);
         if (deadlockInput!=mgr.constantFalse()) {
-            negatedDeadlockPattern.push_back(addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream));
+            negatedDeadlockPatternsArray.push_back(addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream));
         } else {
 
             // No deadlock in sight -> Jump to a different liveness guarantee if necessary.
@@ -251,10 +289,8 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     }
 
     // output to terminal
-    auto end = negatedDeadlockPattern.end();
-    if (!negatedDeadlockPattern.empty()) { --end;}
-    std::copy(negatedDeadlockPattern.begin(), end, std::ostream_iterator<std::string>(std::cout, " &\n"));
-    if (!negatedDeadlockPattern.empty()) {std::cout << *end;}
+    char delimiter[] = " &\n";
+    std::cout << combineStrArray(negatedDeadlockPatternsArray, delimiter);
     }
 
 
@@ -304,12 +340,8 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     // save the deadlock transition into a string
     // the output pattern is the NEGATED one: ! (a & b)  = (!a | !b)
     std::string patternStr;  //output
-    std::stringstream ss;
-    auto end = patternArray.end();
-    if (!patternArray.empty()) { --end;}
-    std::copy(patternArray.begin(), end, std::ostream_iterator<std::string>(ss, " &"));
-    if (!patternArray.empty()) {ss << *end;}
-    patternStr = "!(" + ss.str() + ")";
+    char delimiter[] = " & ";
+    patternStr = "!(" + combineStrArray(patternArray, delimiter) + ")";
 
     // return pattern found
     return patternStr;

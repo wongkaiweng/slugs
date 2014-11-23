@@ -146,7 +146,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         todoInit &= !concreteState;
         todoList.push_back(lookup);
     }
-
+    std::vector<std::string> negatedDeadlockPattern;
     // Extract strategy
     while (todoList.size()>0) {
         std::pair<size_t, std::pair<unsigned int, unsigned int> > current = todoList.front();
@@ -174,7 +174,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         // Can we enforce a deadlock?
         BF deadlockInput = (currentPossibilities & safetyEnv & !safetySys).UnivAbstract(varCubePostOutput);
         if (deadlockInput!=mgr.constantFalse()) {
-            addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream);
+            negatedDeadlockPattern.push_back(addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream));
         } else {
 
             // No deadlock in sight -> Jump to a different liveness guarantee if necessary.
@@ -249,6 +249,12 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
         outputStream << "\n";
     }
+
+    // output to terminal
+    auto end = negatedDeadlockPattern.end();
+    if (!negatedDeadlockPattern.empty()) { --end;}
+    std::copy(negatedDeadlockPattern.begin(), end, std::ostream_iterator<std::string>(std::cout, " &\n"));
+    if (!negatedDeadlockPattern.empty()) {std::cout << *end;}
     }
 
 
@@ -256,8 +262,8 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     //The outputvalues are omitted (indeed, no valuation exists that satisfies the system safeties)
     //Format compatible with JTLV counterstrategy
 
-    void addDeadlocked(BF targetPositionCandidateSet, std::pair<size_t, std::pair<unsigned int, unsigned int> > current, std::vector<BF> &bfsUsedInTheLookupTable, std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > &lookupTableForPastStates, std::ostream &outputStream) {
-    
+    std::string addDeadlocked(BF targetPositionCandidateSet, std::pair<size_t, std::pair<unsigned int, unsigned int> > current, std::vector<BF> &bfsUsedInTheLookupTable, std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > &lookupTableForPastStates, std::ostream &outputStream) {
+    std::vector<std::string> patternArray; // for saving patterns from deadlock
     BF newCombination = determinize(targetPositionCandidateSet, postVars) ;
     
     newCombination  = newCombination.ExistAbstract(varCubePreOutput).SwapVariables(varVectorPre,varVectorPost);
@@ -285,6 +291,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
                 }
                 outputStream << variableNames[i] << ":";
                 outputStream << (((newCombination & variables[i]).isFalse())?"0":"1");
+                patternArray.push_back((((newCombination & variables[i]).isFalse())?" !":" ") +  variableNames[i]);
             }
         }
         outputStream << ">\n\tWith no successors.";
@@ -294,6 +301,18 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         outputStream << tn;
     }
     
+    // save the deadlock transition into a string
+    // the output pattern is the NEGATED one: ! (a & b)  = (!a | !b)
+    std::string patternStr;  //output
+    std::stringstream ss;
+    auto end = patternArray.end();
+    if (!patternArray.empty()) { --end;}
+    std::copy(patternArray.begin(), end, std::ostream_iterator<std::string>(ss, " &"));
+    if (!patternArray.empty()) {ss << *end;}
+    patternStr = "!(" + ss.str() + ")";
+
+    // return pattern found
+    return patternStr;
 }
 
 

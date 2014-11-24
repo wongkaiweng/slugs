@@ -1,0 +1,73 @@
+[INPUT]
+door8
+
+[MOTION STATE OUTPUT]
+thetaBit0
+thetaBit1
+thetaBit2
+thetaBit3
+thetaBit4
+thetaBit5
+
+ybit0
+ybit1
+ybit2
+ybit3
+ybit4
+
+xbit0
+xbit1
+xbit2
+xbit3
+xbit4
+
+
+[MOTION CONTROLLER OUTPUT]
+wbit0
+wbit1
+wbit2
+wbit3
+
+vbit0
+vbit1
+vbit2
+
+[OTHER OUTPUT]
+
+
+[ENV_INIT]
+# start with door8 false
+# & ! door8 & & & & & & & & & ! xbit0 ! xbit1 ! xbit2 ! xbit3 ! xbit4 ! ybit0 ! ybit1 ! ybit2 ! ybit3 ! ybit4
+! door8
+& & & & & & & & & ! xbit0 ! xbit1 xbit2 ! xbit3 ! xbit4 ! ybit0 ! ybit1 ybit2 ! ybit3 ! ybit4
+
+[ENV_TRANS]
+# if in reg(x>3.4,y>3.4), then prevent door8 from becoming true
+| ! & xbit4 ybit4 ! door8'
+#! door8
+#| | door8 ! & & | & xbit2' xbit3' xbit4' | & ybit2' ybit3' ybit4' & xbit4' ybit4' ! door8'
+
+[ENV_LIVENESS]
+1
+
+[SYS_INIT]
+# start in cell(0,0)
+# & & & & & & & & & ! xbit0 ! xbit1 ! xbit2 ! xbit3 ! xbit4 ! ybit0 ! ybit1 ! ybit2 ! ybit3 ! ybit4
+! & & ! vbit0 ! vbit1 ! vbit2
+& & & ! wbit0 ! wbit1 ! wbit2 ! wbit3
+
+[SYS_TRANS]
+# restrict forward velocity
+! & ! vbit1' ! vbit2'
+
+# if door8 true, then do not enter reg(x>3.4,y>3.4)
+| ! door8' ! & xbit4' ybit4'
+
+[SYS_LIVENESS]
+# if door8 false, then always eventually visit reg(x<1.6,y<1.6) and reg(x>3.4,y>3.4)
+| door8 & xbit4 ybit4
+| door8 & & & ! xbit3 ! xbit4 ! ybit3 ! ybit4
+
+# if door8 true, stay in reg(x<1.6,y<1.6)
+| ! door8 & & & ! xbit3 ! xbit4 ! ybit3 ! ybit4
+

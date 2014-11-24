@@ -245,7 +245,7 @@ def actionLoop():
     screenBuffer.fill((64, 64, 64)) # Dark Gray
 
     # Open Slugs
-    slugsProcess = subprocess.Popen(slugsLink+" --interactiveNonDeterministicMotion "+slugsinfile+" "+bddinfile, shell=True, bufsize=1048000, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    slugsProcess = subprocess.Popen(slugsLink+" --environmentRefinementNonDeterministicMotion --interactiveStrategy "+slugsinfile+" "+bddinfile, shell=True, bufsize=1048000, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
     # Get input APs
     slugsProcess.stdin.write("XPRINTINPUTS\n")

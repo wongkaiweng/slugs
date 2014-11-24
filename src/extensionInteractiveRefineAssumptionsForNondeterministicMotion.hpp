@@ -198,7 +198,7 @@ public:
                 }
             }
 
-            std::cerr << "Deadlock revisions found.\nWhen within " << maxDist << " of station_1, never set environment variable s1_occupied to True.\nAccept? (y/n)";
+            // std::cerr << "Deadlock revisions found.\nWhen within " << maxDist << " of station_1, never set environment variable s1_occupied to True.\nAccept? (y/n)";
             char userResponse = 'y';
             // std::cin >> userResponse;
             if (userResponse == 'y') {

@@ -41,8 +41,13 @@ protected:
     using T::postOutputVars;
     using T::doesVariableInheritType;
 
-    BF foundCutPostConditions = mgr.constantFalse();
+    //foundCutPostConditions will eventually contain transitions that prevent the
+    //counterstrategy from enforcing livelock/deadlock
+    BF foundCutPostConditions = mgr.constantTrue();
     BF candidateFailingPreConditions = mgr.constantFalse();
+
+    // build a new vector with preVars and postInputVars
+    SlugsVectorOfVarBFs prePostInputVars{Pre,PostInput,this};
 
     XExtractCounterStrategyClauses<T>(std::list<std::string> &filenames) : T(filenames) {
         if (filenames.size()==1) {
@@ -84,9 +89,9 @@ void execute() {
                 of.close();
             }
         }
-        extractClausesFromBF(foundCutPostConditions);
         BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/foundCutPostConditions.dot");
         BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
+        extractClausesFromBF(foundCutPostConditions);
 }
 
 std::string combineStrArray(std::vector<std::string> strArray, char* delimiter) {
@@ -105,28 +110,34 @@ void extractClausesFromBF(BF bddForConversion){
     // This function extraction a clause with only preVars from bdd.
     // This only work for single chain BDD now.
 
-    std::vector<std::string> clauseSegmentArray;
-    for (unsigned int i=0;i<variables.size();i++) {
+    while (!(bddForConversion.isTrue())) {
+        BF thisClause = determinize(bddForConversion,prePostInputVars);
+        BF_newDumpDot(*this,thisClause,NULL,"/tmp/thisClause.dot");
+        std::vector<std::string> clauseSegmentArray;
+        for (unsigned int i=0;i<variables.size();i++) {
 
-        if ((bddForConversion & variables[i]).isFalse()) { //(!a&b)&a = False
-            clauseSegmentArray.push_back("!"+variableNames[i]);
-            std::cout << variableNames[i] <<":0 " << std::endl; // of value 0
+            if ((thisClause & variables[i]).isFalse()) { //(!a&b)&a = False
+                clauseSegmentArray.push_back("!"+variableNames[i]);
+                std::cout << variableNames[i] <<":0 " << std::endl; // of value 0
 
-        } else if ((bddForConversion & !variables[i]).isFalse()) { //(a&b)&!a = False
-            clauseSegmentArray.push_back(variableNames[i]);
-            std::cout << variableNames[i] <<":1 " << std::endl; // of value 1
+            } else if ((thisClause & !variables[i]).isFalse()) { //(a&b)&!a = False
+                clauseSegmentArray.push_back(variableNames[i]);
+                std::cout << variableNames[i] <<":1 " << std::endl; // of value 1
 
-        } else {
-            std::cout << variableNames[i] <<":-1 " << std::endl; // don't care
+            } else {
+                std::cout << variableNames[i] <<":-1 " << std::endl; // don't care
+            }
         }
-    }
 
-    // print to terminal the clause
-    char delimiter[] = " & ";
-    std::cout << combineStrArray(clauseSegmentArray, delimiter);
+        // print to terminal the clause
+        char delimiter[] = " & ";
+        std::cout << combineStrArray(clauseSegmentArray, delimiter) << std::endl;
+
+        bddForConversion |= !thisClause;
+        BF_newDumpDot(*this,bddForConversion,NULL,"/tmp/bddForConversion.dot");
+    }
 }
 
-    
 void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
     // We don't want any reordering from this point onwards, as
@@ -222,8 +233,9 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
             BF remainingTransitions = currentPossibilities;
 
             // save any combination of pre variables and post inputs found that are not included in player 1's strategy
-            BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitions.dot");
-            BF foundCutConditions = (!remainingTransitions.ExistAbstract(varCubePre)) & remainingTransitions.ExistAbstract(varCubePost);
+            //BF foundCutConditions = (!remainingTransitions.ExistAbstract(varCubePre)) & remainingTransitions.ExistAbstract(varCubePost);
+            foundCutPostConditions &= (remainingTransitions.ExistAbstract(varCubePost)).Implies(!remainingTransitions.ExistAbstract(varCubePre));
+
             candidateFailingPreConditions |= remainingTransitions;
             BF_newDumpDot(*this,!(remainingTransitions).ExistAbstract(varCubePre),NULL,"/tmp/candidateWinningThisState.dot");
             std::stringstream ss1;
@@ -244,7 +256,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
                 BF safeTransition = remainingTransitions & safetySys;
                 BF newCombination = determinize(safeTransition, postOutputVars);
 
-                foundCutPostConditions |= foundCutConditions & newCombination.ExistAbstract(varCubePre).ExistAbstract(varCubePostInput);
+                //foundCutPostConditions |= foundCutConditions & newCombination.ExistAbstract(varCubePre).ExistAbstract(varCubePostInput);
 
                 // Jump as much forward  in the liveness assumption list as possible ("stuttering avoidance")
                 unsigned int nextLivenessAssumption = current.second.first;
@@ -304,7 +316,9 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     
     newCombination  = newCombination.ExistAbstract(varCubePreOutput).SwapVariables(varVectorPre,varVectorPost);
     
-    
+    unsigned int stateNum = lookupTableForPastStates[current];
+    BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];
+    foundCutPostConditions &= currentPossibilities.Implies(!newCombination.SwapVariables(varVectorPost,varVectorPre));
     
     std::pair<size_t, std::pair<unsigned int, unsigned int> > target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(current.second.first, current.second.second));
     unsigned int tn;

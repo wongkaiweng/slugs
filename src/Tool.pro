@@ -47,7 +47,7 @@ SOURCES += main.cpp BFAbstractionLibrary/bddDump.cpp BFAbstractionLibrary/BFCudd
     BFAbstractionLibrary/BFCuddMintermEnumerator.cpp
 
 TARGET = slugs
-INCLUDEPATH = ../lib/cudd-2.5.0/include BFAbstractionLibrary
+INCLUDEPATH = ../lib/cudd-2.5.0/include /usr/local/include BFAbstractionLibrary
 
 LIBS += -L../lib/cudd-2.5.0/cudd -L../lib/cudd-2.5.0/util -L../lib/cudd-2.5.0/mtr -L../lib/cudd-2.5.0/st -L../lib/cudd-2.5.0/dddmp -L../lib/cudd-2.5.0/epd -lcudd -ldddmp -lmtr -lepd -lst -lutil
 

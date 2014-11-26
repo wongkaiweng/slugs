@@ -109,8 +109,7 @@ std::string combineStrArray(std::vector<std::string> strArray, char* delimiter) 
 void extractClausesFromBF(BF bddForConversion){
     // This function extraction a clause with only preVars from bdd.
     // This only work for single chain BDD now.
-
-    while (!(bddForConversion.isTrue())) {
+    while (!(bddForConversion.isFalse())) {
         BF thisClause = determinize(bddForConversion,prePostInputVars);
         BF_newDumpDot(*this,thisClause,NULL,"/tmp/thisClause.dot");
         std::vector<std::string> clauseSegmentArray;
@@ -133,8 +132,7 @@ void extractClausesFromBF(BF bddForConversion){
         char delimiter[] = " & ";
         std::cout << combineStrArray(clauseSegmentArray, delimiter) << std::endl;
 
-        bddForConversion |= !thisClause;
-        BF_newDumpDot(*this,bddForConversion,NULL,"/tmp/bddForConversion.dot");
+        bddForConversion &= !thisClause;
     }
 }
 

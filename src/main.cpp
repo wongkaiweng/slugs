@@ -179,7 +179,8 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--nonDeterministicMotionFastSlow", XNonDeterministicMotionFastSlow<GR1Context,false>::makeInstance),
     OptionCombination("--explicitCuts",XExtractExplicitCounterStrategyCuts<XCounterStrategy<GR1Context,false> >::makeInstance),
     OptionCombination("--symbolicCuts",XExtractSymbolicCounterStrategyCuts<XCounterStrategy<GR1Context,false> >::makeInstance),
-    OptionCombination("--counterStrategyClauses", XExtractCounterStrategyClauses<XCounterStrategy<GR1Context,false> >::makeInstance)
+    OptionCombination("--counterStrategyClauses", XExtractCounterStrategyClauses<XCounterStrategy<GR1Context,false> >::makeInstance),
+    OptionCombination("--counterStrategyClauses --sysInitRoboticsSemantics", XExtractCounterStrategyClauses<XCounterStrategy<GR1Context,true> >::makeInstance)
 
 
     // TODO: Combination between BiasForAction and FixedPointRecycling is not supported yet but would make sense

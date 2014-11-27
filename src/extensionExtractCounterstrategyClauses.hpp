@@ -49,6 +49,9 @@ protected:
     // build a new vector with preVars and postInputVars
     SlugsVectorOfVarBFs prePostInputVars{Pre,PostInput,this};
 
+    // array for saveing foundCutPostConditions
+    std::vector<BF> foundCutPostConditionsArray;
+
     XExtractCounterStrategyClauses<T>(std::list<std::string> &filenames) : T(filenames) {
         if (filenames.size()==1) {
             outputFilename = "";
@@ -72,7 +75,10 @@ void execute() {
         T::execute();
         if (!realizable) {
             if (outputFilename=="") {
-                computeAndPrintExplicitStateStrategy(std::cout);
+                //keep iterating until the specification is realizable again
+                while (!realizable){
+                    appendSafetAssumptionsFromCounterStrategyWithResynthesis(std::cout);
+                }
             } else {
                 std::ofstream of(outputFilename.c_str());
                 if (of.fail()) {
@@ -80,7 +86,11 @@ void execute() {
                     ex << "Error: Could not open output file'" << outputFilename << "\n";
                     throw ex;
                 }
-                computeAndPrintExplicitStateStrategy(of);
+                //keep iterating until the specification is realizable again
+                while (!realizable){
+                    of.clear();
+                    appendSafetAssumptionsFromCounterStrategyWithResynthesis(of);
+                }
                 if (of.fail()) {
                     SlugsException ex(false);
                     ex << "Error: Writing to output file'" << outputFilename << "failed. \n";
@@ -89,10 +99,38 @@ void execute() {
                 of.close();
             }
         }
+
+        // map BF into boolean formula
+        std::cout << "# Safety assumptions for realizable spec:\n";
+        for(auto iter = foundCutPostConditionsArray.begin();iter !=foundCutPostConditionsArray.end();iter++){
+            std::cout << BFtoCNFClauses(*iter);
+
+        }
         BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/foundCutPostConditions.dot");
         BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
-        extractClausesFromBF(foundCutPostConditions);
-        trySimplerClause(foundCutPostConditions);
+        //extractClausesFromBF(foundCutPostConditions);
+}
+
+void appendSafetAssumptionsFromCounterStrategyWithResynthesis(std::ostream &outputStream){
+    /*
+    This function extracts negated transitions from deadlocks and livelocks, appends them
+    to safetyEnv and resynthsizes.
+    */
+    // extract livelocks and deadlock, and print them out.
+    computeAndPrintExplicitStateStrategy(outputStream);
+
+    // safe foundCutPostConditions
+    foundCutPostConditionsArray.push_back(foundCutPostConditions);
+
+    // append clauses found to specification
+    safetyEnv &= foundCutPostConditions;
+
+    //resynthesize the specification
+    strategyDumpingData.clear();
+
+    T::execute();
+    foundCutPostConditions = mgr.constantTrue();
+    candidateFailingPreConditions = mgr.constantFalse();
 }
 
 std::string combineStrArray(std::vector<std::string> strArray, char* delimiter) {
@@ -107,8 +145,8 @@ std::string combineStrArray(std::vector<std::string> strArray, char* delimiter) 
     return ss.str();
 }
 
-void trySimplerClause(BF bddForConversion){
-    // Translate to CNF. Sort by size
+std::string BFtoCNFClauses(BF bddForConversion){
+    // This function maps a BF to CNF.
     std::set<std::vector<int> > clausesFoundSoFarInt;
     std::map<unsigned int,std::vector<std::pair<std::vector<int>,BF> > > clauses; // clauses as cube (-1,0,1) over *all* variables & corresponding BF
     while (!(bddForConversion.isTrue())) {
@@ -190,19 +228,35 @@ void trySimplerClause(BF bddForConversion){
 
 
     // Print the final set of clauses to stdout
-    std::cout << "# Simplified safety assumption CNF clauses:\n";
+    std::string returnClause;
     for (auto it = clausesFoundSoFarIntAfterFiltering.begin();it!=clausesFoundSoFarIntAfterFiltering.end();it++) {
+        std::vector<std::string> returnClauseSegmentArray;
         for (unsigned int i=0;i<variables.size();i++) {
+            std::string varStr;
             if ((*it)[i]!=0) {
                 if ((*it)[i]<0) {
-                    std::cout << "!";
+                    varStr += " ! ";
                 }
-                std::cout << variableNames[i] << " ";
+                varStr += variableNames[i];
+                returnClauseSegmentArray.push_back(varStr);
+
             }
         }
-        std::cout << "\n";
+
+        for (auto iter=returnClauseSegmentArray.begin(); iter!=returnClauseSegmentArray.end();iter++){
+            if (iter == returnClauseSegmentArray.begin()){
+                returnClause += "| " + *iter;
+            }else if (iter == returnClauseSegmentArray.end()-1){
+                returnClause += " " + *iter;
+            } else{
+                returnClause += " | " + *iter;
+            }
+        }
+        returnClause += "\n";
+
     }
-    std::cout << "# End of list\n";
+
+    return returnClause;
 
 }
 

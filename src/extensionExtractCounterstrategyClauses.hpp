@@ -92,6 +92,7 @@ void execute() {
         BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/foundCutPostConditions.dot");
         BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
         extractClausesFromBF(foundCutPostConditions);
+        trySimplerClause(foundCutPostConditions);
 }
 
 std::string combineStrArray(std::vector<std::string> strArray, char* delimiter) {
@@ -104,6 +105,105 @@ std::string combineStrArray(std::vector<std::string> strArray, char* delimiter) 
     if (!strArray.empty()) {ss << *end;}
 
     return ss.str();
+}
+
+void trySimplerClause(BF bddForConversion){
+    // Translate to CNF. Sort by size
+    std::set<std::vector<int> > clausesFoundSoFarInt;
+    std::map<unsigned int,std::vector<std::pair<std::vector<int>,BF> > > clauses; // clauses as cube (-1,0,1) over *all* variables & corresponding BF
+    while (!(bddForConversion.isTrue())) {
+        BF thisClause = determinize(!bddForConversion,variables);
+
+        std::vector<int> thisClauseInt;
+        unsigned int elementsInThisClause = 0;
+        for (unsigned int i=0;i<variables.size();i++) {
+            BF thisTry = thisClause.ExistAbstractSingleVar(variables[i]);
+            if ((thisTry & bddForConversion).isFalse()) {
+                thisClauseInt.push_back(0);
+                thisClause = thisTry;
+            } else if ((thisClause & variables[i]).isFalse()) {
+                thisClauseInt.push_back(1);
+                elementsInThisClause++;
+            } else {
+                thisClauseInt.push_back(-1);
+                elementsInThisClause++;
+            }
+        }
+        clauses[elementsInThisClause].push_back(std::pair<std::vector<int>,BF>(thisClauseInt,!thisClause));
+        bddForConversion |= thisClause;
+        clausesFoundSoFarInt.insert(thisClauseInt);
+    }
+
+    // Remove literals from the clauses whenever they are redundant. They are redundant if the
+    // overall assumptions do not change when removing a literal
+    std::set<std::vector<int> > clausesFoundSoFarIntAfterFiltering;
+    BF clausesSoFar = mgr.constantTrue();
+    while (clausesFoundSoFarInt.size()>0) {
+        std::vector<int> thisClause = *(clausesFoundSoFarInt.begin());
+        clausesFoundSoFarInt.erase(clausesFoundSoFarInt.begin());
+
+        // Compute BF for the rest of the clauses
+        BF nextClauses = mgr.constantTrue();
+        for (auto it = clausesFoundSoFarInt.begin();it!=clausesFoundSoFarInt.end();it++) {
+            BF thisClauseBF = mgr.constantFalse();
+            for (unsigned int i=0;i<variables.size();i++) {
+                if (thisClause[i]>0) {
+                    thisClauseBF |= variables[i];
+                } else if (thisClause[i]<0) {
+                    thisClauseBF |= !variables[i];
+                }
+            }
+            nextClauses &= thisClauseBF;
+        }
+
+        // Go over the literals
+        std::vector<int> filteredLiterals;
+        BF committedLiterals = mgr.constantFalse();
+        for (unsigned int i=0;i<variables.size();i++) {
+            BF restOfClause = committedLiterals;
+            for (unsigned int j=i+1;j<variables.size();j++) {
+                if (thisClause[j]>0) {
+                    restOfClause |= variables[j];
+                } else if (thisClause[j]<0) {
+                    restOfClause |= !variables[j];
+                }
+            }
+
+            // Check if this literal is needed
+            BF literal;
+            if (thisClause[i]>0) {
+                literal = variables[i];
+            } else {
+                literal = !variables[i];
+            }
+
+            if ((clausesSoFar & nextClauses & restOfClause) == (clausesSoFar & nextClauses & (restOfClause | literal))) {
+                filteredLiterals.push_back(0);
+            } else {
+                committedLiterals |= literal;
+                filteredLiterals.push_back(thisClause[i]);
+            }
+        }
+        clausesSoFar &= committedLiterals;
+        clausesFoundSoFarIntAfterFiltering.insert(filteredLiterals);
+    }
+
+
+    // Print the final set of clauses to stdout
+    std::cout << "# Simplified safety assumption CNF clauses:\n";
+    for (auto it = clausesFoundSoFarIntAfterFiltering.begin();it!=clausesFoundSoFarIntAfterFiltering.end();it++) {
+        for (unsigned int i=0;i<variables.size();i++) {
+            if ((*it)[i]!=0) {
+                if ((*it)[i]<0) {
+                    std::cout << "!";
+                }
+                std::cout << variableNames[i] << " ";
+            }
+        }
+        std::cout << "\n";
+    }
+    std::cout << "# End of list\n";
+
 }
 
 void extractClausesFromBF(BF bddForConversion){

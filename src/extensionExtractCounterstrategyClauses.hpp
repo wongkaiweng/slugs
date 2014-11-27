@@ -416,8 +416,8 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     
     unsigned int stateNum = lookupTableForPastStates[current];
     BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];
-    foundCutPostConditions &= currentPossibilities.Implies(!newCombination.SwapVariables(varVectorPost,varVectorPre));
-    
+    foundCutPostConditions &= (currentPossibilities.ExistAbstract(varCubePost)).Implies(!newCombination.SwapVariables(varVectorPre,varVectorPost).ExistAbstract(varCubePre).ExistAbstract(varCubePostOutput));
+
     std::pair<size_t, std::pair<unsigned int, unsigned int> > target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(current.second.first, current.second.second));
     unsigned int tn;
     

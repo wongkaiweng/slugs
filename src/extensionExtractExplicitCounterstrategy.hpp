@@ -105,6 +105,12 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     std::list<std::pair<size_t, std::pair<unsigned int, unsigned int> > > todoList;
 
     
+    std::vector<BF> livenessCutPerGoal(livenessGuarantees.size());
+    for (unsigned int j=0;j<livenessGuarantees.size()+1;j++) {
+           livenessCutPerGoal[j] = mgr.constantFalse();
+    }
+
+    
     // Prepare positional strategies for the individual goals
     std::vector<std::vector<BF> > positionalStrategiesForTheIndividualGoals(livenessAssumptions.size());
     for (unsigned int i=0;i<livenessAssumptions.size();i++) {
@@ -188,10 +194,11 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
             // save any combination of pre variables and post inputs found that are not included in player 1's strategy
             BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitions.dot");
 	    
-            //BF foundCutConditions = (!remainingTransitions.ExistAbstract(varCubePre)) & remainingTransitions.ExistAbstract(varCubePost);
-            foundCutPostConditions &= (remainingTransitions.ExistAbstract(varCubePost)).Implies(!remainingTransitions.ExistAbstract(varCubePre));
-	    //candidateFailingPreConditions |= remainingTransitions;
-            BF_newDumpDot(*this,!(remainingTransitions).ExistAbstract(varCubePre),NULL,"/tmp/candidateWinningThisState.dot");
+	    // add this transition to the set of possible edges to cut to prevent livelock for goal j.
+	    // removing any edge should allow the system to escape livelock.
+	    livenessCutPerGoal[current.second.second] |= (remainingTransitions.ExistAbstract(varCubePost)).Implies(!remainingTransitions.ExistAbstract(varCubePre));
+
+	    BF_newDumpDot(*this,!(remainingTransitions).ExistAbstract(varCubePre),NULL,"/tmp/candidateWinningThisState.dot");
             std::stringstream ss1;
             std::stringstream ss2;
             ss1 << "/tmp/candidateWinning" << stateNum << ".dot";
@@ -254,7 +261,12 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
         outputStream << "\n";
     }
+
+    // need to cut the counterstrategy for each goal
+    for (unsigned int j=0;j<livenessGuarantees.size()+1;j++) {
+         foundCutPostConditions &= livenessCutPerGoal[j];
     }
+}
 
 
     //This function adds a new successor-less "state" that captures the deadlock-causing input values
@@ -269,6 +281,8 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
     unsigned int stateNum = lookupTableForPastStates[current];
     BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];
+
+    //cut to exclude current transition from counterstrategy
     foundCutPostConditions &= currentPossibilities.Implies(!newCombination.SwapVariables(varVectorPost,varVectorPre));
     
     std::pair<size_t, std::pair<unsigned int, unsigned int> > target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(current.second.first, current.second.second));

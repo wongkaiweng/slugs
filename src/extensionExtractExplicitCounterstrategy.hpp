@@ -277,7 +277,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     
     BF newCombination = determinize(targetPositionCandidateSet, postVars) ;
     
-    newCombination  = newCombination.ExistAbstract(varCubePreOutput).SwapVariables(varVectorPre,varVectorPost);
+    newCombination  = (newCombination.ExistAbstract(varCubePostOutput).ExistAbstract(varCubePre)).SwapVariables(varVectorPre,varVectorPost);
 
     unsigned int stateNum = lookupTableForPastStates[current];
     BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];

@@ -101,7 +101,8 @@ public:
                     thisEncoding &= !variables[counterVarNumbers[j]];
                 }
             }
-	    positionalStrategiesForTheIndividualGoals[i] = combinedStrategy.ExistAbstract(thisEncoding & ((!variables[goalTransitionSelectorVar]) | livenessGuarantees[i]));
+	    //positionalStrategiesForTheIndividualGoals[i] = combinedStrategy.ExistAbstract(thisEncoding & ((!variables[goalTransitionSelectorVar]) | livenessGuarantees[i]));
+	    positionalStrategiesForTheIndividualGoals[i] = combinedStrategy & thisEncoding & ((!variables[goalTransitionSelectorVar]) | livenessGuarantees[i]);
 	    
         }
 

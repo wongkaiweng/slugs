@@ -49,6 +49,7 @@ public:
 
         if (realizable) {
             std::cerr << "RESULT: Specification is realizable.\n";
+            
         } else {
             std::cerr << "RESULT: Specification is unrealizable.\n";
         }
@@ -130,6 +131,7 @@ public:
         BF currentPosition = mgr.constantFalse();
         unsigned int currentLivenessGuarantee = 0;
 
+        std::cerr << "Ready for execution!" << std::endl;
         while(true) {
 
             // The prompt

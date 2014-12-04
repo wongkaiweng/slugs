@@ -5,7 +5,7 @@ QMAKE_LINK_C = gcc
 QMAKE_CXX = g++
 QMAKE_LINK = g++
 
-BDDFLAGS = $$system(gcc BFAbstractionLibrary/compilerOptionGenerator.c -o /tmp/BFAbstractionCompilerOptionsProducer-$$(USER);/tmp/BFAbstractionCompilerOptionsProducer-$$(USER))
+BDDFLAGS = $$system(gcc BFAbstractionLibrary/compilerOptionGenerator.c -o BFAbstractionCompilerOptionsProducer;BFAbstractionCompilerOptionsProducer)
 DEFINES += USE_CUDD
 CFLAGS += -g -fpermissive
 
@@ -41,15 +41,15 @@ HEADERS += BFAbstractionLibrary/BF.h BFAbstractionLibrary/BFCudd.h gr1context.hp
     extensionPermissiveExplicitStrategy.hpp \
     extensionIncompleteInformationEstimatorSynthesis.hpp \
     extensionNondeterministicMotion.hpp \
-    extensionExtractSymbolicStrategy.hpp \
-    extensionTwoDimensionalCost.hpp
+    extensionExtractSymbolicStrategy.hpp
 
 SOURCES += main.cpp BFAbstractionLibrary/bddDump.cpp BFAbstractionLibrary/BFCuddVarVector.cpp BFAbstractionLibrary/BFCudd.cpp BFAbstractionLibrary/BFCuddManager.cpp \
     BFAbstractionLibrary/BFCuddVarCube.cpp tools.cpp synthesisAlgorithm.cpp synthesisContextBasics.cpp variableManager.cpp \
     BFAbstractionLibrary/BFCuddMintermEnumerator.cpp
 
 TARGET = slugs
-INCLUDEPATH = ../lib/cudd-2.5.0/include BFAbstractionLibrary
+INCLUDEPATH = ../lib/cudd-2.5.0/include BFAbstractionLibrary  ../../../../../../../boost_1_57_0/
+
 
 LIBS += -L../lib/cudd-2.5.0/cudd -L../lib/cudd-2.5.0/util -L../lib/cudd-2.5.0/mtr -L../lib/cudd-2.5.0/st -L../lib/cudd-2.5.0/dddmp -L../lib/cudd-2.5.0/epd -lcudd -ldddmp -lmtr -lepd -lst -lutil
 

@@ -41,10 +41,13 @@ protected:
     using T::postOutputVars;
     using T::doesVariableInheritType;
 
-    //foundCutPostConditions will eventually contain transitions that prevent the
-    //counterstrategy from enforcing livelock/deadlock
-    BF foundCutPostConditions = mgr.constantTrue(); 
-    BF candidateFailingPreConditions = mgr.constantFalse();
+    //foundCutConditions will eventually contain transitions that prevent the
+    //counterstrategy from enforcing livelock/deadlock.
+    // -- For deadlock, ALL transitions that satisfy foundCutConditions must be excluded.
+    // -- For livelock, only ONE transition need be excluded to eliminate THIS counterstrategy
+    // -- There may be other counterstrategies not excluded by foundCutConditions -- future work will compute cuts symbolically
+  
+    BF foundCutConditions = mgr.constantTrue(); 
 
     XExtractExplicitCounterStrategy<T>(std::list<std::string> &filenames) : T(filenames) {
         if (filenames.size()==1) {
@@ -86,8 +89,7 @@ void execute() {
                 of.close();
             }
         }
-        BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/foundCutPostConditions.dot");
-        BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
+        BF_newDumpDot(*this,foundCutConditions,NULL,"/tmp/foundCutConditions.dot");
 }
 
     
@@ -105,11 +107,9 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     std::list<std::pair<size_t, std::pair<unsigned int, unsigned int> > > todoList;
 
     
-    std::vector<BF> livenessCutPerGoal(livenessGuarantees.size());
-    for (unsigned int j=0;j<livenessGuarantees.size()+1;j++) {
-           livenessCutPerGoal[j] = mgr.constantFalse();
-    }
-
+    BF livelockCut = mgr.constantFalse();
+    BF deadlockCut = mgr.constantTrue();
+    
     
     // Prepare positional strategies for the individual goals
     std::vector<std::vector<BF> > positionalStrategiesForTheIndividualGoals(livenessAssumptions.size());
@@ -182,7 +182,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         // Can we enforce a deadlock?
         BF deadlockInput = (currentPossibilities & safetyEnv & !safetySys).UnivAbstract(varCubePostOutput);
         if (deadlockInput!=mgr.constantFalse()) {
-            addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream);
+	  addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream, deadlockCut);
         } else {
 
             // No deadlock in sight -> Jump to a different liveness guarantee if necessary.
@@ -196,7 +196,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 	    
 	    // add this transition to the set of possible edges to cut to prevent livelock for goal j.
 	    // removing any edge should allow the system to escape livelock.
-	    livenessCutPerGoal[current.second.second] |= (remainingTransitions.ExistAbstract(varCubePost)).Implies(!remainingTransitions.ExistAbstract(varCubePre));
+	    livelockCut |= (remainingTransitions.ExistAbstract(varCubePost)).Implies(!remainingTransitions.ExistAbstract(varCubePre));
 
 	    BF_newDumpDot(*this,!(remainingTransitions).ExistAbstract(varCubePre),NULL,"/tmp/candidateWinningThisState.dot");
             std::stringstream ss1;
@@ -218,8 +218,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
                 BF safeTransition = remainingTransitions & safetySys;
                 BF newCombination = determinize(safeTransition, postOutputVars);
 
-                //foundCutPostConditions |= foundCutConditions & newCombination.ExistAbstract(varCubePre).ExistAbstract(varCubePostInput);
-		  
+               	  
                 // Jump as much forward  in the liveness assumption list as possible ("stuttering avoidance")
                 unsigned int nextLivenessAssumption = current.second.first;
                 bool firstTry = true;
@@ -263,9 +262,13 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     }
 
     // need to cut the counterstrategy for each goal
-    for (unsigned int j=0;j<livenessGuarantees.size()+1;j++) {
-         foundCutPostConditions &= livenessCutPerGoal[j];
+    if (livelockCut.isFalse()) {
+	foundCutConditions = deadlockCut;
+    }	else {
+        foundCutConditions = livelockCut;
     }
+	  
+    
 }
 
 
@@ -273,7 +276,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     //The outputvalues are omitted (indeed, no valuation exists that satisfies the system safeties)
     //Format compatible with JTLV counterstrategy
 
-    void addDeadlocked(BF targetPositionCandidateSet, std::pair<size_t, std::pair<unsigned int, unsigned int> > current, std::vector<BF> &bfsUsedInTheLookupTable, std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > &lookupTableForPastStates, std::ostream &outputStream) {
+  void addDeadlocked(BF targetPositionCandidateSet, std::pair<size_t, std::pair<unsigned int, unsigned int> > current, std::vector<BF> &bfsUsedInTheLookupTable, std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > &lookupTableForPastStates, std::ostream &outputStream, BF &deadlockCut) {
     
     BF newCombination = determinize(targetPositionCandidateSet, postVars) ;
     
@@ -283,7 +286,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];
 
     //cut to exclude current transition from counterstrategy
-    foundCutPostConditions &= currentPossibilities.Implies(!newCombination.SwapVariables(varVectorPost,varVectorPre));
+    deadlockCut &= currentPossibilities.Implies(!newCombination.SwapVariables(varVectorPost,varVectorPre));
     
     std::pair<size_t, std::pair<unsigned int, unsigned int> > target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(current.second.first, current.second.second));
     unsigned int tn;

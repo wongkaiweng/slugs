@@ -41,6 +41,17 @@ protected:
     using T::postOutputVars;
     using T::doesVariableInheritType;
 
+<<<<<<< HEAD
+=======
+    //foundCutPostConditions will eventually contain transitions that prevent the
+    //counterstrategy from enforcing livelock/deadlock.
+    // -- For deadlock, ALL transitions that satisfy foundCutConditions must be excluded.
+    // -- For livelock, only ONE transition need be excluded to eliminate THIS counterstrategy
+    // -- There may be other counterstrategies not excluded by foundCutConditions -- future work will compute cuts symbolically
+
+    BF foundCutPostConditions = mgr.constantTrue();
+
+>>>>>>> new change in separating livelocks and deadlocks
     XExtractExplicitCounterStrategy<T>(std::list<std::string> &filenames) : T(filenames) {
         if (filenames.size()==1) {
             outputFilename = "";
@@ -81,9 +92,14 @@ void execute() {
                 of.close();
             }
         }
+<<<<<<< HEAD
+=======
+        BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/foundCutPostConditions.dot");
+        //BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
+>>>>>>> new change in separating livelocks and deadlocks
 }
 
-    
+
 void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
     // We don't want any reordering from this point onwards, as
@@ -228,7 +244,20 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
         outputStream << "\n";
     }
+<<<<<<< HEAD
     }
+=======
+
+    // need to cut the counterstrategy for each goal
+    if (livelockCut.isFalse()) {
+        foundCutPostConditions = deadlockCut;
+    }   else {
+        foundCutPostConditions = livelockCut;
+    }
+
+
+}
+>>>>>>> new change in separating livelocks and deadlocks
 
 
     //This function adds a new successor-less "state" that captures the deadlock-causing input values

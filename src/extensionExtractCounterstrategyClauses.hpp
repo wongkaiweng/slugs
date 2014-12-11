@@ -46,6 +46,9 @@ protected:
     BF foundCutPostConditions = mgr.constantTrue();
     BF candidateFailingPreConditions = mgr.constantFalse();
 
+    BF livelockCut = mgr.constantFalse();
+    BF deadlockCut = mgr.constantTrue();
+
     // build a new vector with preVars and postInputVars
     SlugsVectorOfVarBFs prePostInputVars{Pre,PostInput,this};
 
@@ -130,6 +133,8 @@ void appendSafetAssumptionsFromCounterStrategyWithResynthesis(std::ostream &outp
 
     T::execute();
     foundCutPostConditions = mgr.constantTrue();
+    livelockCut = mgr.constantFalse();
+    deadlockCut = mgr.constantTrue();
     candidateFailingPreConditions = mgr.constantFalse();
 }
 
@@ -242,17 +247,20 @@ std::string BFtoCNFClauses(BF bddForConversion){
 
             }
         }
-
-        for (auto iter=returnClauseSegmentArray.begin(); iter!=returnClauseSegmentArray.end();iter++){
-            if (iter == returnClauseSegmentArray.begin()){
-                returnClause += "| " + *iter;
-            }else if (iter == returnClauseSegmentArray.end()-1){
-                returnClause += " " + *iter;
-            } else{
-                returnClause += " | " + *iter;
+        if (returnClauseSegmentArray.size() == 1){
+            returnClause += *returnClauseSegmentArray.begin() + "\n";
+        }else{
+            for (auto iter=returnClauseSegmentArray.begin(); iter!=returnClauseSegmentArray.end();iter++){
+                if (iter == returnClauseSegmentArray.begin()){
+                    returnClause += "| " + *iter;
+                }else if (iter == returnClauseSegmentArray.end()-1){
+                    returnClause += " " + *iter;
+                } else{
+                    returnClause += " | " + *iter;
+                }
             }
+            returnClause += "\n";
         }
-        returnClause += "\n";
 
     }
 
@@ -375,7 +383,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         // Can we enforce a deadlock?
         BF deadlockInput = (currentPossibilities & safetyEnv & !safetySys).UnivAbstract(varCubePostOutput);
         if (deadlockInput!=mgr.constantFalse()) {
-            negatedDeadlockPatternsArray.push_back(addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream));
+            negatedDeadlockPatternsArray.push_back(addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream, deadlockCut));
         } else {
 
             // No deadlock in sight -> Jump to a different liveness guarantee if necessary.
@@ -386,7 +394,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
             // save any combination of pre variables and post inputs found that are not included in player 1's strategy
             //BF foundCutConditions = (!remainingTransitions.ExistAbstract(varCubePre)) & remainingTransitions.ExistAbstract(varCubePost);
-            foundCutPostConditions &= (remainingTransitions.ExistAbstract(varCubePost)).Implies(!remainingTransitions.ExistAbstract(varCubePre));
+            livelockCut |= (remainingTransitions.ExistAbstract(varCubePost)) & (!remainingTransitions.ExistAbstract(varCubePre));
 
             candidateFailingPreConditions |= remainingTransitions;
             BF_newDumpDot(*this,!(remainingTransitions).ExistAbstract(varCubePre),NULL,"/tmp/candidateWinningThisState.dot");
@@ -453,8 +461,20 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     }
 
     // output to terminal
-    char delimiter[] = " &\n";
-    std::cout << combineStrArray(negatedDeadlockPatternsArray, delimiter);
+    //char delimiter[] = " &\n";
+    //std::cout << combineStrArray(negatedDeadlockPatternsArray, delimiter);
+    //foundCutPostConditions = livelockCut & deadlockCut;
+
+
+    if (livelockCut.isFalse()) {
+    foundCutPostConditions = deadlockCut;
+    }   else {
+        foundCutPostConditions = livelockCut; // & deadlockCut;
+    }
+    BF_newDumpDot(*this,deadlockCut,NULL,"/tmp/deadlockCut.dot");
+    BF_newDumpDot(*this,livelockCut,NULL,"/tmp/livelockCut.dot");
+
+
     }
 
 
@@ -462,16 +482,17 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     //The outputvalues are omitted (indeed, no valuation exists that satisfies the system safeties)
     //Format compatible with JTLV counterstrategy
 
-    std::string addDeadlocked(BF targetPositionCandidateSet, std::pair<size_t, std::pair<unsigned int, unsigned int> > current, std::vector<BF> &bfsUsedInTheLookupTable, std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > &lookupTableForPastStates, std::ostream &outputStream) {
+    std::string addDeadlocked(BF targetPositionCandidateSet, std::pair<size_t, std::pair<unsigned int, unsigned int> > current, std::vector<BF> &bfsUsedInTheLookupTable, std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > &lookupTableForPastStates, std::ostream &outputStream, BF &deadlockCut) {
     std::vector<std::string> patternArray; // for saving patterns from deadlock
     BF newCombination = determinize(targetPositionCandidateSet, postVars) ;
-    
-    newCombination  = newCombination.ExistAbstract(varCubePreOutput).SwapVariables(varVectorPre,varVectorPost);
-    
+
+    newCombination  = (newCombination.ExistAbstract(varCubePostOutput).ExistAbstract(varCubePre)).SwapVariables(varVectorPre,varVectorPost);
+
     unsigned int stateNum = lookupTableForPastStates[current];
     BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];
     foundCutPostConditions &= (currentPossibilities.ExistAbstract(varCubePost)).Implies(!newCombination.SwapVariables(varVectorPre,varVectorPost).ExistAbstract(varCubePre).ExistAbstract(varCubePostOutput));
 
+    deadlockCut &= (currentPossibilities.ExistAbstract(varCubePost)).Implies(!newCombination.SwapVariables(varVectorPre,varVectorPost));
     std::pair<size_t, std::pair<unsigned int, unsigned int> > target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(current.second.first, current.second.second));
     unsigned int tn;
     

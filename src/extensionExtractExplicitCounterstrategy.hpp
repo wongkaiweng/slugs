@@ -196,7 +196,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 	    
 	    // add this transition to the set of possible edges to cut to prevent livelock for goal j.
 	    // removing any edge should allow the system to escape livelock.
-	    livelockCut |= (remainingTransitions.ExistAbstract(varCubePost)).Implies(!remainingTransitions.ExistAbstract(varCubePre));
+	    livelockCut |= (remainingTransitions.ExistAbstract(varCubePost) & !remainingTransitions.ExistAbstract(varCubePre));
 
 	    BF_newDumpDot(*this,!(remainingTransitions).ExistAbstract(varCubePre),NULL,"/tmp/candidateWinningThisState.dot");
             std::stringstream ss1;

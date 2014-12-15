@@ -104,11 +104,42 @@ void execute() {
         }
 
         // map BF into boolean formula
+        std::vector<std::string> foundCutPostConditionsStrArray;
+
         std::cout << "# Safety assumptions for realizable spec:\n";
         for(auto iter = foundCutPostConditionsArray.begin();iter !=foundCutPostConditionsArray.end();iter++){
-            std::cout << BFtoCNFClauses(*iter);
+            std::string  strClause = BFtoCNFClauses(*iter);
+
+            std::vector<std::string> strSubClauses;
+            boost::split(strSubClauses, strClause, boost::is_any_of("\n"));
+
+            // exclude clauses that are the same
+            for (auto subClauseIter = strSubClauses.begin(); subClauseIter != strSubClauses.end(); subClauseIter++){
+                bool addClause = true;
+                for (auto strIter = foundCutPostConditionsStrArray.begin(); strIter != foundCutPostConditionsStrArray.end();strIter++){
+                    if (*strIter == *subClauseIter){
+                        addClause = false;
+                        break;
+                    }
+                }
+
+                // output clause
+                if (addClause == true){
+                    foundCutPostConditionsStrArray.push_back(*subClauseIter);
+
+                }
+            }
 
         }
+
+        // print clauses
+        for(auto iter = foundCutPostConditionsStrArray.begin();iter !=foundCutPostConditionsStrArray.end();iter++){
+            if (!(*iter == "")){
+                std::cout << *iter;
+                std::cout << "\n";
+            }
+        }
+
         BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/foundCutPostConditions.dot");
         BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
         //extractClausesFromBF(foundCutPostConditions);

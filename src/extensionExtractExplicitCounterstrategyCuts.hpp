@@ -322,7 +322,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
 
     static GR1Context* makeInstance(std::list<std::string> &filenames) {
-        return new XExtractExplicitCounterStrategy<T>(filenames);
+        return new XExtractExplicitCounterStrategyCuts<T>(filenames);
     }
 };
 

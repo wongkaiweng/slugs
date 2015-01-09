@@ -63,6 +63,8 @@
 #include "extensionRefineAssumptionsForNondeterministicMotion.hpp"
 #include "extensionInteractiveRefineAssumptionsForNondeterministicMotion.hpp"
 #include "extensionNondeterministicMotionFastSlow.hpp"
+#include "extensionExtractExplicitCounterstrategyCuts.hpp"
+#include "extensionExtractSymbolicCounterstrategyCuts.hpp"
 
 //===================================================================================
 // List of command line arguments
@@ -172,8 +174,9 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> >::makeInstance),
     OptionCombination("--environmentRefinementNonDeterministicMotion --interactiveStrategy", XInteractiveRefineAssumptionsForNondeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> >::makeInstance),
     // OptionCombination("--environmentRefinementNonDeterministicMotion", XRefineAssumptionsForNondeterministicMotion<XExtractExplicitCounterStrategyNondeterministicMotion<XNonDeterministicMotion<XCounterStrategyNondeterministicMotion<GR1Context,false> ,false> > >::makeInstance)
-    OptionCombination("--nonDeterministicMotionFastSlow", XNonDeterministicMotionFastSlow<GR1Context,false>::makeInstance)
-        
+    OptionCombination("--nonDeterministicMotionFastSlow", XNonDeterministicMotionFastSlow<GR1Context,false>::makeInstance),
+    OptionCombination("--explicitCuts",XExtractExplicitCounterStrategyCuts<XCounterStrategy<GR1Context,false> >::makeInstance),
+    OptionCombination("--symbolicCuts",XExtractSymbolicCounterStrategyCuts<XCounterStrategy<GR1Context,false> >::makeInstance)
 
 
     // TODO: Combination between BiasForAction and FixedPointRecycling is not supported yet but would make sense

@@ -49,7 +49,7 @@ protected:
   
     BF foundCutConditions = mgr.constantTrue(); 
 
-    XExtractExplicitCounterStrategyUniversalCuts<T>(std::list<std::string> &filenames) : T(filenames) {
+    XExtractSymbolicCounterStrategyCuts<T>(std::list<std::string> &filenames) : T(filenames) {
         if (filenames.size()==1) {
             outputFilename = "";
         } else {
@@ -72,7 +72,7 @@ void execute() {
         T::execute();
         if (!realizable) {
             if (outputFilename=="") {
-                computeAndPrintExplicitStateStrategy(std::cout);
+                computeAndPrintSymbolicStrategy(std::cout);
             } else {
                 std::ofstream of(outputFilename.c_str());
                 if (of.fail()) {
@@ -80,7 +80,7 @@ void execute() {
                     ex << "Error: Could not open output file'" << outputFilename << "\n";
                     throw ex;
                 }
-                computeAndPrintExplicitStateStrategy(of);
+                computeAndPrintSymbolicStrategy(of);
                 if (of.fail()) {
                     SlugsException ex(false);
                     ex << "Error: Writing to output file'" << outputFilename << "failed. \n";
@@ -110,9 +110,9 @@ void computeAndPrintSymbolicStrategy(std::ostream &outputStream) {
     BF livelockCut = mgr.constantTrue();
     BF deadlockCut = mgr.constantTrue();
 
-    std::vector<BF> strategy(livenessGuarantees.size());
+    std::vector<BF> livelockCutPerGoal(livenessGuarantees.size());
     for (unsigned int j=0;j<livenessGuarantees.size();j++) {
-        livelockCut[j] = mgr.constantFalse();
+        livelockCutPerGoal[j] = mgr.constantFalse();
     }
     
     // Prepare positional strategies for the individual goals
@@ -133,12 +133,13 @@ void computeAndPrintSymbolicStrategy(std::ostream &outputStream) {
         }
         positionalStrategiesForTheIndividualGoals[i] = strategy;
 
-	// excludes deadlock
-	deadlockCut &= !((strategy & safetyEnv & !safetySys).UnivAbstract(varCubePostOutput));
 	    
-	// adds options to exclude livelock for goal j
+	// adds options to exclude deadlock and livelock for goal j
 	for (unsigned int j=0;j<livenessGuarantees.size();j++) {
-	  livelockCut[j] |= !(strategy.UnivAbstract(varCubePostOutput));
+	  // excludes deadlock
+	  deadlockCut &= !((strategy[j] & safetyEnv & !safetySys).UnivAbstract(varCubePostOutput));
+	  // excludes livelock
+	  livelockCutPerGoal[j] |= !(strategy[j].UnivAbstract(varCubePostOutput));
         }
     }
     
@@ -146,7 +147,7 @@ void computeAndPrintSymbolicStrategy(std::ostream &outputStream) {
 	
     for (unsigned int j=0;j<livenessGuarantees.size();j++) {
       // exclude livelock for all goals
-      livelockCut &= livelockCut[j];
+      livelockCut &= livelockCutPerGoal[j];
     }
     
     foundCutConditions = deadlockCut & livelockCut;
@@ -155,7 +156,7 @@ void computeAndPrintSymbolicStrategy(std::ostream &outputStream) {
 
 
     static GR1Context* makeInstance(std::list<std::string> &filenames) {
-        return new XExtractExplicitCounterStrategy<T>(filenames);
+        return new XExtractSymbolicCounterStrategyCuts<T>(filenames);
     }
 };
 

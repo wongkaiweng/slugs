@@ -1,5 +1,5 @@
-#ifndef __EXTENSION_EXPLICIT_COUNTERSTRATEGY_HPP
-#define __EXTENSION_EXPLICIT_COUNTERSTRATEGY_HPP
+#ifndef __EXTENSION_EXPLICIT_COUNTERSTRATEGY_CUTS_HPP
+#define __EXTENSION_EXPLICIT_COUNTERSTRATEGY_CUTS_HPP
 
 #include "gr1context.hpp"
 #include <string>
@@ -7,7 +7,7 @@
 /**
  * A class that computes an explicit state counterstrategy for an unrealizable specification
  */
-template<class T> class XExtractExplicitCounterStrategy : public T {
+template<class T> class XExtractExplicitCounterStrategyCuts : public T {
 protected:
     // New variables
     std::string outputFilename;
@@ -49,7 +49,7 @@ protected:
   
     BF foundCutConditions = mgr.constantTrue(); 
 
-    XExtractExplicitCounterStrategy<T>(std::list<std::string> &filenames) : T(filenames) {
+    XExtractExplicitCounterStrategyCuts<T>(std::list<std::string> &filenames) : T(filenames) {
         if (filenames.size()==1) {
             outputFilename = "";
         } else {

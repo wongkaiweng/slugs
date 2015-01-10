@@ -97,7 +97,9 @@ const char *commandLineArguments[] = {
     "--strategyNonDeterministicMotion","Extract a strategy in the non-deterministic abstraction setting.",
     "--environmentRefinementNonDeterministicMotion","Automatically compute new assumptions and guarantees to address unrealizability in specs involving non-deterministic robot abstractions",
     "--nonDeterministicMotionFastSlow","Computes a controller using an non-deterministic motion abstraction using a fast-slow implementation.",
-    "--counterStrategyClauses","Find transitions deadlocks and livelocks and output to a file."
+    "--counterStrategyClauses","Find transitions deadlocks and livelocks and output to a file.",
+    "--explicitCuts","extract edges from one gigantic counterStrategy and output explicit strategy",
+    "--symbolicCuts","extract edges from one gigantic counterStrategy and output sybmolic strategy"
 };
 
 //===================================================================================

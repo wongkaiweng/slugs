@@ -41,8 +41,6 @@ protected:
     using T::postOutputVars;
     using T::doesVariableInheritType;
 
-<<<<<<< HEAD
-=======
     //foundCutPostConditions will eventually contain transitions that prevent the
     //counterstrategy from enforcing livelock/deadlock.
     // -- For deadlock, ALL transitions that satisfy foundCutConditions must be excluded.
@@ -51,7 +49,6 @@ protected:
 
     BF foundCutPostConditions = mgr.constantTrue();
 
->>>>>>> new change in separating livelocks and deadlocks
     XExtractExplicitCounterStrategy<T>(std::list<std::string> &filenames) : T(filenames) {
         if (filenames.size()==1) {
             outputFilename = "";
@@ -92,11 +89,8 @@ void execute() {
                 of.close();
             }
         }
-<<<<<<< HEAD
-=======
         BF_newDumpDot(*this,foundCutPostConditions,NULL,"/tmp/foundCutPostConditions.dot");
         //BF_newDumpDot(*this,candidateFailingPreConditions,NULL,"/tmp/candidateFailingPreConditionsAfter.dot");
->>>>>>> new change in separating livelocks and deadlocks
 }
 
 
@@ -113,6 +107,10 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
     std::vector<BF> bfsUsedInTheLookupTable;
     std::list<std::pair<size_t, std::pair<unsigned int, unsigned int> > > todoList;
 
+    
+    BF livelockCut = mgr.constantFalse();
+    BF deadlockCut = mgr.constantTrue();
+    
     
     // Prepare positional strategies for the individual goals
     std::vector<std::vector<BF> > positionalStrategiesForTheIndividualGoals(livenessAssumptions.size());
@@ -185,7 +183,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         // Can we enforce a deadlock?
         BF deadlockInput = (currentPossibilities & safetyEnv & !safetySys).UnivAbstract(varCubePostOutput);
         if (deadlockInput!=mgr.constantFalse()) {
-            addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream);
+	  addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream, deadlockCut);
         } else {
 
             // No deadlock in sight -> Jump to a different liveness guarantee if necessary.
@@ -194,15 +192,34 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
             assert(currentPossibilities != mgr.constantFalse());
             BF remainingTransitions = currentPossibilities;
 
+            // save any combination of pre variables and post inputs found that are not included in player 1's strategy
+            BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitions.dot");
+	    
+	    // add this transition to the set of possible edges to cut to prevent livelock for goal j.
+	    // removing any edge should allow the system to escape livelock.
+	    livelockCut |= (remainingTransitions.ExistAbstract(varCubePost) & !remainingTransitions.ExistAbstract(varCubePre));
+
+	    BF_newDumpDot(*this,!(remainingTransitions).ExistAbstract(varCubePre),NULL,"/tmp/candidateWinningThisState.dot");
+            std::stringstream ss1;
+            std::stringstream ss2;
+            ss1 << "/tmp/candidateWinning" << stateNum << ".dot";
+            ss2 << "/tmp/remainingTransitions" << stateNum << ".dot";
+            BF_newDumpDot(*this,(!remainingTransitions.ExistAbstract(varCubePre)) & remainingTransitions.ExistAbstract(varCubePost),NULL,ss1.str());
+            BF_newDumpDot(*this,remainingTransitions,NULL,ss2.str());
+
             // Choose one next input and stick to it!
+            // BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitionsBefore.dot");
             remainingTransitions = determinize(remainingTransitions,postInputVars);
+            // BF_newDumpDot(*this,remainingTransitions,NULL,"/tmp/remainingTransitionsAfter.dot");
 
             // Switching goals
             while (!(remainingTransitions & safetySys).isFalse()) {
 
+	      
                 BF safeTransition = remainingTransitions & safetySys;
                 BF newCombination = determinize(safeTransition, postOutputVars);
 
+               	  
                 // Jump as much forward  in the liveness assumption list as possible ("stuttering avoidance")
                 unsigned int nextLivenessAssumption = current.second.first;
                 bool firstTry = true;
@@ -244,9 +261,6 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
         outputStream << "\n";
     }
-<<<<<<< HEAD
-    }
-=======
 
     // need to cut the counterstrategy for each goal
     if (livelockCut.isFalse()) {
@@ -257,18 +271,23 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
 
 }
->>>>>>> new change in separating livelocks and deadlocks
 
 
     //This function adds a new successor-less "state" that captures the deadlock-causing input values
     //The outputvalues are omitted (indeed, no valuation exists that satisfies the system safeties)
     //Format compatible with JTLV counterstrategy
 
-    void addDeadlocked(BF targetPositionCandidateSet, std::pair<size_t, std::pair<unsigned int, unsigned int> > current, std::vector<BF> &bfsUsedInTheLookupTable, std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > &lookupTableForPastStates, std::ostream &outputStream) {
+  void addDeadlocked(BF targetPositionCandidateSet, std::pair<size_t, std::pair<unsigned int, unsigned int> > current, std::vector<BF> &bfsUsedInTheLookupTable, std::map<std::pair<size_t, std::pair<unsigned int, unsigned int> >, unsigned int > &lookupTableForPastStates, std::ostream &outputStream, BF &deadlockCut) {
     
     BF newCombination = determinize(targetPositionCandidateSet, postVars) ;
     
     newCombination  = (newCombination.ExistAbstract(varCubePostOutput).ExistAbstract(varCubePre)).SwapVariables(varVectorPre,varVectorPost);
+
+    unsigned int stateNum = lookupTableForPastStates[current];
+    BF currentPossibilities = bfsUsedInTheLookupTable[stateNum];
+
+    //cut to exclude current transition from counterstrategy
+    deadlockCut &= currentPossibilities.Implies(!newCombination.SwapVariables(varVectorPost,varVectorPre));
     
     std::pair<size_t, std::pair<unsigned int, unsigned int> > target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(current.second.first, current.second.second));
     unsigned int tn;

@@ -12,7 +12,6 @@ from parser import Parser
 from re import match
 import StringIO
 
-
 # Allocate global parser
 p = Parser()
 
@@ -254,8 +253,10 @@ def performConversion(smvFile, ltlFile):
     # Iterate over the property types.
     buildPropertySet(assumptionTree,"ENV_",False,False)
     buildPropertySet(assumptionTree,"ENV_",False,True)
-    buildPropertySet(guaranteeTree,"SYS_",True,False)
-    buildPropertySet(guaranteeTree,"SYS_",True,True)
+    buildPropertySet(guaranteeTree,"SYS_",False,False)
+    buildPropertySet(guaranteeTree,"SYS_",False,True)
+    #buildPropertySet(guaranteeTree,"SYS_",True,False)
+    #buildPropertySet(guaranteeTree,"SYS_",True,True)
 
 
 # ============================================

@@ -8,9 +8,9 @@
  * A class that opens an interactive shell to allow examining the property of strategies computed
  *
  */
-template<class T> class XInteractiveStrategy : public T {
+template<class T, bool oneStepRecovery=false> class XInteractiveStrategy : public T {
 protected:
-    XInteractiveStrategy<T>(std::list<std::string> &filenames) : T(filenames) {}
+    XInteractiveStrategy<T, oneStepRecovery>(std::list<std::string> &filenames) : T(filenames) {}
 
     using T::checkRealizability;
     using T::realizable;
@@ -41,7 +41,7 @@ protected:
 
 public:
     static GR1Context* makeInstance(std::list<std::string> &filenames) {
-        return new XInteractiveStrategy<T>(filenames);
+        return new XInteractiveStrategy<T, oneStepRecovery>(filenames);
     }
 
     void execute() {
@@ -132,6 +132,7 @@ public:
         BF currentPosition = mgr.constantFalse();
         unsigned int currentLivenessGuarantee = 0;
 
+        std::cout << "oneStepRecovery:" << std::to_string(oneStepRecovery) << std::endl;
         while(true) {
 
             // The prompt
@@ -150,7 +151,7 @@ public:
             if ((command=="QUIT") || (command=="EXIT")) {
                 return;
             } else if (command=="STARTPOS") {
-                BF initialPosition = winningPositions & initEnv & initSys;
+                BF initialPosition = (oneStepRecovery)?(winningPositions & initSys):(winningPositions & initEnv & initSys);
                 assert(!(initialPosition.isFalse()));
                 initialPosition = determinize(initialPosition,preVars);
                 for (unsigned int i=0;i<variables.size();i++) {
@@ -430,7 +431,7 @@ public:
                         }
                     }
                 }
-                BF trans = currentPosition & postInput & safetyEnv;
+                BF trans = (oneStepRecovery)?(currentPosition & postInput):(currentPosition & postInput & safetyEnv);
                 if (trans.isFalse()) {
                     std::cout << "ERROR\n";
                     if (currentPosition.isFalse()) {

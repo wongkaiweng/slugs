@@ -226,6 +226,7 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--cooperativeGR1Strategy --jsonOutput --simpleRecovery --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,true>::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics",XExtractSymbolicStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --simpleRecovery --simpleSymbolicStrategy --sysInitRoboticsSemantics",XExtractSymbolicStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --simpleRecovery --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true>::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> > >::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --onlyRealizability --sysInitRoboticsSemantics",XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --onlyRealizability --sysInitRoboticsSemantics",XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >::makeInstance),

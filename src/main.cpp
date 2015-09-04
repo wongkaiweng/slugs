@@ -58,6 +58,7 @@
 #include "extensionTwoDimensionalCost.hpp"
 #include "extensionCooperativeGR1Strategy.hpp"
 #include "extensionExtractExplicitStrategyWithWinningPositions.hpp"
+#include "extensionExtractSymbolicStrategyWithWinningPositions.hpp"
 
 //===================================================================================
 // List of command line arguments
@@ -233,7 +234,8 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<GR1Context,false,false>::makeInstance),
     OptionCombination("--simpleRecovery --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<GR1Context,true,false>::makeInstance),
     OptionCombination("--sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,false,false>::makeInstance),
-    OptionCombination("--simpleRecovery --sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,true,false>::makeInstance)
+    OptionCombination("--simpleRecovery --sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,true,false>::makeInstance),
+    OptionCombination("--symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,false,false>::makeInstance)
     // TODO: Combination between BiasForAction and FixedPointRecycling is not supported yet but would make sense
 };
 

@@ -90,7 +90,7 @@ const char *commandLineArguments[] = {
     "--nonDeterministicMotion","Computes a controller using an non-deterministic motion abstraction.",
     "--twoDimensionalCost","Computes a controller that optimizes for waiting and action cost at the same time.",
     "--cooperativeGR1Strategy","Computes a controller strategy that is cooperative with its environment.",
-    "--withWinningLiveness", "Outputs the explicit strategy with livness guarantee array conjunted with winning positions."
+    "--withWinningLiveness", "Outputs livness guarantee array conjunted with winning positions."
 };
 
 //===================================================================================
@@ -232,10 +232,19 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--cooperativeGR1Strategy --onlyRealizability --sysInitRoboticsSemantics",XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --onlyRealizability --sysInitRoboticsSemantics",XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >::makeInstance),
     OptionCombination("--withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<GR1Context,false,false>::makeInstance),
+    OptionCombination("--symbolicStrategy --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<GR1Context,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XCooperativeGR1Strategy<GR1Context>,false,false>::makeInstance),
     OptionCombination("--simpleRecovery --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<GR1Context,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XCooperativeGR1Strategy<GR1Context>,true,false>::makeInstance),
     OptionCombination("--sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,false>::makeInstance),
     OptionCombination("--simpleRecovery --sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,true,false>::makeInstance),
-    OptionCombination("--symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,false,false>::makeInstance)
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance),
+    OptionCombination("--symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,false>::makeInstance),
+    OptionCombination("--simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance)
+
     // TODO: Combination between BiasForAction and FixedPointRecycling is not supported yet but would make sense
 };
 

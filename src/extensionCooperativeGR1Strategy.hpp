@@ -43,10 +43,13 @@ public:
         BF nonDeadEndSafetySys = safetySys & safetyEnv.ExistAbstract(varCubePost).SwapVariables(varVectorPre,varVectorPost);
         // BF_newDumpDot(*this,nonDeadEndSafetySys,"Pre Post","/tmp/nonDeadEndSys.dot");
 
+        // first make a copy of the liveness guarantees
+        std::vector<BF> livenessGuaranteesCopy = livenessGuarantees;
+
         // Copy all liveness assumptions into liveness guarantees - we are
         // them seperately at the end of a "guarantee cycle".
         for (auto it = livenessAssumptions.begin();it!=livenessAssumptions.end();it++) {
-            livenessGuarantees.push_back(*it);
+            livenessGuaranteesCopy.push_back(*it);
         }
         std::vector<BF> transitionsTowardsLivenessAssumption(livenessAssumptions.size());
 
@@ -68,12 +71,12 @@ public:
             // Iterate over all of the liveness guarantees. Put the results into the variable 'nextContraintsForGoals' for every
             // goal. Then, after we have iterated over the goals, we can update nu2.
             BF nextContraintsForGoals = mgr.constantTrue();
-            for (unsigned int j=0;j<livenessGuarantees.size()-livenessAssumptions.size();j++) {
+            for (unsigned int j=0;j<livenessGuaranteesCopy.size()-livenessAssumptions.size();j++) {
 
                 // Start computing the transitions that lead closer to the goal and lead to a position that is not yet known to be losing.
                 // Start with the ones that actually represent reaching the goal (which is a transition in this implementation as we can have
                 // nexts in the goal descriptions).
-                BF livetransitions = livenessGuarantees[j] & (nu2.getValue().SwapVariables(varVectorPre,varVectorPost));
+                BF livetransitions = livenessGuaranteesCopy[j] & (nu2.getValue().SwapVariables(varVectorPre,varVectorPost));
 
                 // Compute the middle least-fixed point (called 'Y' in the GR(1) paper)
                 BFFixedPoint mu1(mgr.constantFalse());
@@ -170,9 +173,9 @@ public:
             // Now iterate over the liveness assumptions
             // and compute a sub-strategy to ensure that there is always some way in which the
             // liveness assumptions can be satisfied
-            for (unsigned int j=livenessGuarantees.size()-livenessAssumptions.size();j<livenessGuarantees.size();j++) {
+            for (unsigned int j=livenessGuaranteesCopy.size()-livenessAssumptions.size();j<livenessGuaranteesCopy.size();j++) {
 
-                BF currentLivenessAssumption = livenessGuarantees[j];
+                BF currentLivenessAssumption = livenessGuaranteesCopy[j];
 
                 // Collect a set of paths to satisfy this liveness assumption, while the system can
                 // always enforce to land in a winning state afterwards
@@ -207,7 +210,7 @@ public:
                     mu1.update(winningStates | mu1.getValue());
                 }
                 nextContraintsForGoals &= mu1.getValue();
-                transitionsTowardsLivenessAssumption[j-(livenessGuarantees.size()-livenessAssumptions.size())] = goodTransitions;
+                transitionsTowardsLivenessAssumption[j-(livenessGuaranteesCopy.size()-livenessAssumptions.size())] = goodTransitions;
 
                 // Backup transitions not towards the goal
                 strategyDumpingData.push_back(std::pair<unsigned int,BF>(j,nonDeadEndSafetySys & nu2.getValue().SwapVariables(varVectorPre,varVectorPost)));
@@ -224,8 +227,8 @@ public:
 
         // Modify the additional liveness guarantees to be satisfied once the environment deviated
         // from the paths towards the environment liveness goal.
-        for (unsigned int j=livenessGuarantees.size()-livenessAssumptions.size();j<livenessGuarantees.size();j++) {
-            livenessGuarantees[j] |= !transitionsTowardsLivenessAssumption[j-(livenessGuarantees.size()-livenessAssumptions.size())];
+        for (unsigned int j=livenessGuaranteesCopy.size()-livenessAssumptions.size();j<livenessGuaranteesCopy.size();j++) {
+            livenessGuaranteesCopy[j] |= !transitionsTowardsLivenessAssumption[j-(livenessGuaranteesCopy.size()-livenessAssumptions.size())];
         }
 
         // We found the set of winning positions

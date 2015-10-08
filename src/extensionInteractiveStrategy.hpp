@@ -409,7 +409,69 @@ public:
                         }
                     }
                 }
+
+            /*added by Catherine STARTED*/
+            } else if (command=="XGETPOSSIBLETRANS") {
+
+                if (currentPosition == mgr.constantFalse()) {
+                    std::cout << "Error: The current position is undefined. Use SETPOS prior to calling MOVE." << std::endl;
+                } else {
+
+                    std::cout << "Guarantee No.: ";
+                    std::cout.flush();
+                    unsigned int guarantee;
+                    std::cin >> guarantee;
+                    if (std::cin.fail()) {
+                        std::cout << "    -> Error reading value. Aborting \n";
+                    } else if (guarantee>=livenessGuarantees.size()) {
+                        std::cout << "    -> Number too large. Aborting \n";
+                    } else {
+
+                        BF allowedInputs = (currentPosition & safetyEnv);
+                        if (allowedInputs.isFalse()) {
+                            std::cout << "No move possible. There is no allowed next input!\n";
+                        } else {
+                            BF_newDumpDot(*this,allowedInputs,"Pre Post","/tmp/allowedInputs.dot");
+
+                            // Compute which transition to takes
+                            BF transition = currentPosition & safetyEnv & safetySys & positionalStrategiesForTheIndividualGoals[guarantee];
+                            //BF transition = currentPosition & safetyEnv & safetySys & winningPositions;
+
+                            if (transition.isFalse()) {
+                                std::cout << "    -> Error: Input not allowed here.\n";
+                                if (!(currentPosition & safetyEnv).isFalse()) {
+                                    std::cout << "       -> Actually, that's an internal error!\n";
+                                }
+                            } else {
+
+                                while (!(transition.isFalse())) {
+                                    BF oneTransition = determinize(transition,postVars);
+
+                                    for (unsigned int i=0;i<variables.size();i++) {
+                                        if ((variableTypes[i]==PostInput) || (variableTypes[i]==PostOutput)){
+                                            if ((variables[i] & oneTransition).isFalse()) {
+                                                //std::cout << " - " << variableNames[i] << " = 0\n";
+                                                std::cout << "0";
+                                                //nextPosition &= !variables[i];
+                                            } else {
+                                                //std::cout << " - " << variableNames[i] << " = 1\n";
+                                                std::cout << "1";
+                                                //nextPosition &= variables[i];
+                                            }
+                                        }
+                                    }
+                                    // remove oneTransition from transition
+                                    transition = transition & !oneTransition;
+
+                                    std::cout << ",";
+                                }
+                                std::cout << std::endl;
+                            }
+                        }
+                    }
+                }
             }
+            /*added by Catherine ENDED*/
 
             //========================================
             // Simplified functions to be called from

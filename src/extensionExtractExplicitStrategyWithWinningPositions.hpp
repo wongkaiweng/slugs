@@ -241,22 +241,32 @@ public:
     }
 
     void execute() {
-        std::vector<BF> livenessGuaranteesCopy = livenessGuarantees;
+        //std::vector<BF> livenessGuaranteesCopy = livenessGuarantees;
 
         T::execute();
         if (realizable) {
 
             // also print out winning positions with liveness guarantees
-            for (unsigned int j=0;j<livenessGuaranteesCopy.size();j++) {
-                BF_newDumpDot(*this,winningPositions & livenessGuaranteesCopy[j],NULL, "/tmp/winningPositionsWithLivenessGuarantees["+std::to_string(j)+"].dot");
-                if (outputFilename=="") {
-                    std::cout << "System livenesses " << j << " and winning positions:\n";
-                    printLivenessesAndWinningPositionsConjunts(winningPositions & livenessGuaranteesCopy[j], std::cout);}
-                else{
-                    std::ofstream oLiveness((outputFilename+"liveness" + std::to_string(j)).c_str());
-                    printLivenessesAndWinningPositionsConjunts(winningPositions & livenessGuaranteesCopy[j], oLiveness);
-                    oLiveness.close();
-                }
+            // for (unsigned int j=0;j<livenessGuaranteesCopy.size();j++) {
+            //     BF_newDumpDot(*this,winningPositions & livenessGuaranteesCopy[j],NULL, "/tmp/winningPositionsWithLivenessGuarantees["+std::to_string(j)+"].dot");
+            //     if (outputFilename=="") {
+            //         std::cout << "System livenesses " << j << " and winning positions:\n";
+            //         printLivenessesAndWinningPositionsConjunts(winningPositions & livenessGuaranteesCopy[j], std::cout);}
+            //     else{
+            //         std::ofstream oLiveness((outputFilename+"liveness" + std::to_string(j)).c_str());
+            //         printLivenessesAndWinningPositionsConjunts(winningPositions & livenessGuaranteesCopy[j], oLiveness);
+            //         oLiveness.close();
+            //     }
+            // }
+
+            BF_newDumpDot(*this,winningPositions,NULL, "/tmp/winningPositions.dot");
+            if (outputFilename=="") {
+                std::cout << "Winning positions:\n";
+                printLivenessesAndWinningPositionsConjunts(winningPositions, std::cout);}
+            else{
+                std::ofstream oLiveness((outputFilename+"WinPos").c_str());
+                printLivenessesAndWinningPositionsConjunts(winningPositions, oLiveness);
+                oLiveness.close();
             }
 
             if (outputFilename=="") {

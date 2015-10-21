@@ -252,15 +252,25 @@ public:
         if (realizable) {
 
             // also print out winning positions with liveness guarantees
-            for (unsigned int j=0;j<livenessGuarantees.size();j++) {
-                if (outputFilename=="") {
-                    std::cout << "System livenesses " << j << " and winning positions:\n";
-                    printLivenessesAndWinningPositionsConjunts(winningPositions & livenessGuarantees[j], std::cout);}
-                else{
-                    std::ofstream oLiveness((outputFilename+"liveness" + std::to_string(j)).c_str());
-                    printLivenessesAndWinningPositionsConjunts(winningPositions & livenessGuarantees[j], oLiveness);
-                    oLiveness.close();
-                }
+            // for (unsigned int j=0;j<livenessGuarantees.size();j++) {
+            //     if (outputFilename=="") {
+            //         std::cout << "System livenesses " << j << " and winning positions:\n";
+            //         printLivenessesAndWinningPositionsConjunts(winningPositions & livenessGuarantees[j], std::cout);}
+            //     else{
+            //         std::ofstream oLiveness((outputFilename+"liveness" + std::to_string(j)).c_str());
+            //         printLivenessesAndWinningPositionsConjunts(winningPositions & livenessGuarantees[j], oLiveness);
+            //         oLiveness.close();
+            //     }
+            // }
+
+            BF_newDumpDot(*this,winningPositions,NULL, "/tmp/winningPositions.dot");
+            if (outputFilename=="") {
+                std::cout << "Winning positions:\n";
+                printLivenessesAndWinningPositionsConjunts(winningPositions, std::cout);}
+            else{
+                std::ofstream oLiveness((outputFilename+"WinPos").c_str());
+                printLivenessesAndWinningPositionsConjunts(winningPositions, oLiveness);
+                oLiveness.close();
             }
 
 

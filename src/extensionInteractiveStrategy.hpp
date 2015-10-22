@@ -555,6 +555,10 @@ public:
                 std::cout << "\n"; // Get rid of the prompt
                 std::cout << livenessAssumptions.size() << std::endl;
                 std::cout << livenessGuarantees.size() << std::endl;
+            } else if (command=="XGETCURRENTGOAL"){
+                std::cout << currentLivenessGuarantee << std::endl; // Flushes, too.
+            } else if (command=="XMAKEGOAL"){
+                std::cin >> currentLivenessGuarantee;
             } else if (command=="XGETINIT") {
                 std::cout << "\n"; // Get rid of the prompt
                 BF initialPosition = winningPositions & initEnv & initSys;
@@ -607,7 +611,9 @@ public:
                     }
                 }
 
-                BF possibleInitialPositions = initEnv & forced;
+                BF possibleInitialPositions = forced;
+                //BF possibleInitialPositions = initEnv & forced;
+
 
                 // There exists an allowed initial position
                 char result[preVars.size()];

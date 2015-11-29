@@ -559,6 +559,7 @@ public:
                 std::cout << currentLivenessGuarantee << std::endl; // Flushes, too.
             } else if (command=="XMAKEGOAL"){
                 std::cin >> currentLivenessGuarantee;
+                std::cout << std::endl; // Flushes, too.
             } else if (command=="XGETINIT") {
                 std::cout << "\n"; // Get rid of the prompt
                 BF initialPosition = winningPositions & initEnv & initSys;

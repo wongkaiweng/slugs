@@ -59,6 +59,7 @@
 #include "extensionCooperativeGR1Strategy.hpp"
 #include "extensionExtractExplicitStrategyWithWinningPositions.hpp"
 #include "extensionExtractSymbolicStrategyWithWinningPositions.hpp"
+#include "extensionOptimisticRecovery.hpp"
 
 //===================================================================================
 // List of command line arguments
@@ -90,7 +91,8 @@ const char *commandLineArguments[] = {
     "--nonDeterministicMotion","Computes a controller using an non-deterministic motion abstraction.",
     "--twoDimensionalCost","Computes a controller that optimizes for waiting and action cost at the same time.",
     "--cooperativeGR1Strategy","Computes a controller strategy that is cooperative with its environment.",
-    "--withWinningLiveness", "Outputs livness guarantee array conjunted with winning positions."
+    "--withWinningLiveness", "Outputs livness guarantee array conjunted with winning positions.",
+    "--optimisticRecovery","Computes a strategy that also permits environment assumption violations under which no winning states can be reached."
 };
 
 //===================================================================================
@@ -218,6 +220,8 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--cooperativeGR1Strategy --simpleRecovery --simpleSymbolicStrategy",XExtractSymbolicStrategy<XCooperativeGR1Strategy<GR1Context>,true,true>::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --interactiveStrategy",XInteractiveStrategy<XCooperativeGR1Strategy<GR1Context> >::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --onlyRealizability",XCooperativeGR1Strategy<GR1Context>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --extractExplicitPermissiveStrategy",XExtractPermissiveExplicitStrategy<XCooperativeGR1Strategy<GR1Context>,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --extractExplicitPermissiveStrategy --simpleRecovery",XExtractPermissiveExplicitStrategy<XCooperativeGR1Strategy<GR1Context>,true>::makeInstance),
 
     OptionCombination("--cooperativeGR1Strategy --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,false>::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --jsonOutput --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,true>::makeInstance),
@@ -244,6 +248,12 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--cooperativeGR1Strategy --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,false>::makeInstance),
     OptionCombination("--simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,true,false>::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance)
+
+// Optimistic Recovery
+    OptionCombination("--optimisticRecovery --simpleRecovery",XExtractExplicitStrategy<XOptimisticRecovery<GR1Context>,true,false>::makeInstance),
+    OptionCombination("--optimisticRecovery --simpleRecovery --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XOptimisticRecovery<GR1Context>>,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --optimisticRecovery --simpleRecovery --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XOptimisticRecovery<XCooperativeGR1Strategy<GR1Context>>>,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --optimisticRecovery --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XOptimisticRecovery<XCooperativeGR1Strategy<GR1Context>>>>::makeInstance)
 
     // TODO: Combination between BiasForAction and FixedPointRecycling is not supported yet but would make sense
 };

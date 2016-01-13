@@ -15,25 +15,8 @@ protected:
     std::string outputFilename;
 
     // Inherited stuff used
-    using T::mgr;
-    using T::winningPositions;
-    using T::initSys;
-    using T::initEnv;
-    using T::preVars;
     using T::livenessGuarantees;
-    using T::strategyDumpingData;
-    using T::variables;
-    using T::safetyEnv;
-    using T::variableTypes;
     using T::realizable;
-    using T::postVars;
-    using T::varCubePre;
-    using T::variableNames;
-    using T::varVectorPre;
-    using T::varVectorPost;
-    using T::varCubePostOutput;
-    using T::determinize;
-    using T::doesVariableInheritType;
 
     XUnrealizabilityAnalysis<T>(std::list<std::string> &filenames): T(filenames) {}
 
@@ -57,18 +40,23 @@ public:
 
         // make a copy of the original livenessGuarantees
         std::vector<BF> livenessGuaranteesCopy(livenessGuarantees);
+        std::vector<BF> livenessGuaranteesRealizable; // realizable goals
         std::vector<int> livenessGuaranteesNumber;
 
         // first do a sanity check on whether we need to analysis spec
         T::checkRealizability();
 
         if (realizable){
-            std::cout << "The specification is realizable and no analysis is needed!\n";
+            std::cerr << "RESULT: Specification is realizable.\nNo analysis is needed!\n";
         } else {
-            livenessGuarantees.clear();
+            std::cerr << "RESULT: Specification is unrealizable.\n";
+
             // adding one livenessGuarantee at a time
             for (unsigned int i = 0; i < livenessGuaranteesCopy.size(); i++) {
-                livenessGuarantees.push_back(livenessGuaranteesCopy[i]);
+                livenessGuaranteesRealizable.push_back(livenessGuaranteesCopy[i]);
+
+                // also clear guarantees in case of using cooperative strategy
+                livenessGuarantees.assign(livenessGuaranteesRealizable.begin(), livenessGuaranteesRealizable.end());
 
                 // check if spec is realizable without this goal
                 T::checkRealizability();
@@ -76,13 +64,12 @@ public:
                     livenessGuaranteesNumber.push_back(i);
 
                     // remove the liveness that causes unrealizability
-                    livenessGuarantees.pop_back();
+                    livenessGuaranteesRealizable.pop_back();
                 }
             }
 
             // now prints the output
             if (outputFilename=="") {
-                std::cout << "Goals that cannot be satisfied:\n";
                 printUnrealizableLivenessGuarantees(livenessGuaranteesNumber, std::cout);
             } else {
                 std::ofstream oAnalysis(outputFilename.c_str());
@@ -93,14 +80,9 @@ public:
     }
 
     void printUnrealizableLivenessGuarantees(std::vector<int> livenessGuaranteesNumber, std::ostream &outputStream){
-        outputStream << "{";
         for (auto i = livenessGuaranteesNumber.begin(); i != livenessGuaranteesNumber.end(); ++i) {
-            if (i != livenessGuaranteesNumber.begin()){
-                outputStream << ", ";
-            }
-            outputStream << *i;
+            outputStream << "System highlighted goal(s) unrealizable: " << *i << "\n";
         }
-        outputStream << "}\n";
 
     }
 

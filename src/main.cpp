@@ -252,6 +252,8 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--cooperativeGR1Strategy --simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance),
     OptionCombination("--unrealizabilityAnalysis", XUnrealizabilityAnalysis<GR1Context>::makeInstance),
     OptionCombination("--sysInitRoboticsSemantics --unrealizabilityAnalysis", XUnrealizabilityAnalysis<XRoboticsSemantics<GR1Context> >::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --sysInitRoboticsSemantics --unrealizabilityAnalysis", XUnrealizabilityAnalysis<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> > >::makeInstance),
+
 
 // Optimistic Recovery
     OptionCombination("--optimisticRecovery --simpleRecovery",XExtractExplicitStrategy<XOptimisticRecovery<GR1Context>,true,false>::makeInstance),

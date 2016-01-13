@@ -60,6 +60,7 @@
 #include "extensionExtractExplicitStrategyWithWinningPositions.hpp"
 #include "extensionExtractSymbolicStrategyWithWinningPositions.hpp"
 #include "extensionOptimisticRecovery.hpp"
+#include "extensionUnrealizabilityAnalysis.hpp"
 
 //===================================================================================
 // List of command line arguments
@@ -92,7 +93,8 @@ const char *commandLineArguments[] = {
     "--twoDimensionalCost","Computes a controller that optimizes for waiting and action cost at the same time.",
     "--cooperativeGR1Strategy","Computes a controller strategy that is cooperative with its environment.",
     "--withWinningLiveness", "Outputs livness guarantee array conjunted with winning positions.",
-    "--optimisticRecovery","Computes a strategy that also permits environment assumption violations under which no winning states can be reached."
+    "--optimisticRecovery","Computes a strategy that also permits environment assumption violations under which no winning states can be reached.",
+    "--unrealizabilityAnalysis", "Isolates system goals that are unrealizable"
 };
 
 //===================================================================================
@@ -247,7 +249,9 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,false,false>::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,false>::makeInstance),
     OptionCombination("--simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,true,false>::makeInstance),
-    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance)
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance),
+    OptionCombination("--unrealizabilityAnalysis", XUnrealizabilityAnalysis<GR1Context>::makeInstance),
+    OptionCombination("--sysInitRoboticsSemantics --unrealizabilityAnalysis", XUnrealizabilityAnalysis<XRoboticsSemantics<GR1Context> >::makeInstance),
 
 // Optimistic Recovery
     OptionCombination("--optimisticRecovery --simpleRecovery",XExtractExplicitStrategy<XOptimisticRecovery<GR1Context>,true,false>::makeInstance),

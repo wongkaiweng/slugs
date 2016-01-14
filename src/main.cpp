@@ -259,7 +259,8 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--optimisticRecovery --simpleRecovery",XExtractExplicitStrategy<XOptimisticRecovery<GR1Context>,true,false>::makeInstance),
     OptionCombination("--optimisticRecovery --simpleRecovery --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XOptimisticRecovery<GR1Context>>,true,false>::makeInstance),
     OptionCombination("--cooperativeGR1Strategy --optimisticRecovery --simpleRecovery --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XOptimisticRecovery<XCooperativeGR1Strategy<GR1Context>>>,true,false>::makeInstance),
-    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --optimisticRecovery --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XOptimisticRecovery<XCooperativeGR1Strategy<GR1Context>>>>::makeInstance)
+    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --optimisticRecovery --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XOptimisticRecovery<XCooperativeGR1Strategy<GR1Context>>>>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --optimisticRecovery --simpleRecovery --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XOptimisticRecovery<XCooperativeGR1Strategy<GR1Context>>>,true>::makeInstance)
 
     // TODO: Combination between BiasForAction and FixedPointRecycling is not supported yet but would make sense
 };

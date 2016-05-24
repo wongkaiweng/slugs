@@ -2,7 +2,10 @@
 #define __EXTENSION_INTERACTIVE_STRATEGY_HPP
 
 #include <boost/algorithm/string.hpp>
-
+#include <iostream>
+#include <cstdio>
+#include <ctime>
+#include <iomanip>
 
 /**
  * A class that opens an interactive shell to allow examining the property of strategies computed
@@ -45,7 +48,10 @@ public:
     }
 
     void execute() {
+        clock_t startCheckRealizability = std::clock();
         checkRealizability();
+        float durationCheckRealizability = ( std::clock() - startCheckRealizability ) / (float) CLOCKS_PER_SEC;
+        std::cerr << "---checkRealizability duration is: "<< durationCheckRealizability <<" seconds.\n";
 
         if (realizable) {
             std::cerr << "RESULT: Specification is realizable.\n";
@@ -57,11 +63,14 @@ public:
         std::vector<BF> positionalStrategiesForTheIndividualGoals;
 
         if (realizable) {
+            clock_t startStrategyDumping = std::clock();
 
             // Use the strategy dumping data that we have already from the synthesis procedure.
             for (unsigned int i=0;i<livenessGuarantees.size();i++) {
                 BF casesCovered = mgr.constantFalse();
                 BF strategy = mgr.constantFalse();
+
+                clock_t startEachLiveness = std::clock();
                 for (auto it = strategyDumpingData.begin();it!=strategyDumpingData.end();it++) {
                     if (it->first == i) {
                         BF newCases = it->second.ExistAbstract(varCubePostOutput) & !casesCovered;
@@ -69,11 +78,18 @@ public:
                         casesCovered |= newCases;
                     }
                 }
+                float durationEachLiveness = ( std::clock() - startEachLiveness ) / (float) CLOCKS_PER_SEC;
+                std::cerr << "+strategy dumping duration is: " <<  durationEachLiveness <<" seconds.\n";
+
+
                 positionalStrategiesForTheIndividualGoals.push_back(strategy);
-                std::ostringstream filename;
-                filename << "/tmp/realizableStratForSystemGoal" << i << ".dot";
-                BF_newDumpDot(*this,strategy,"PreInput PreOutput PostInput PostOutput",filename.str().c_str());
+                //std::ostringstream filename;
+                //filename << "/tmp/realizableStratForSystemGoal" << i << ".dot";
+                //BF_newDumpDot(*this,strategy,"PreInput PreOutput PostInput PostOutput",filename.str().c_str());
             }
+            float durationStrategyDumping = ( std::clock() - startStrategyDumping ) / (float) CLOCKS_PER_SEC;
+            std::cerr << "---strategy dumping duration is: "<<  durationStrategyDumping <<" seconds.\n";
+
         } else {
 
             strategyDumpingData.clear();

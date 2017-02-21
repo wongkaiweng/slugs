@@ -148,6 +148,7 @@ public:
         BF currentPosition = mgr.constantFalse();
         unsigned int currentLivenessGuarantee = 0;
 
+        std::cerr << "Starting Interactive Strategy Execution" << std::endl;
         std::cout << "oneStepRecovery:" << std::to_string(oneStepRecovery) << std::endl;
         while(true) {
 
@@ -181,6 +182,8 @@ public:
                     }
                 }
                 currentPosition = initialPosition;
+                std::cout << std::endl;
+
             } else if (command=="CHECKTRANS") {
 
                 std::cout << "From: \n";
@@ -305,6 +308,7 @@ public:
                         }
                     }
                 }
+                std::cout << std::endl;
                 currentPosition = from;
             } else if (command=="MOVE") {
 
@@ -425,6 +429,7 @@ public:
                         }
                     }
                 }
+                std::cout << std::endl;
 
             /*added by Catherine STARTED*/
             } else if (command=="XGETPOSSIBLETRANS") {
@@ -486,6 +491,7 @@ public:
                         }
                     }
                 }
+                std::cout << std::endl;
             }
             /*added by Catherine ENDED*/
 

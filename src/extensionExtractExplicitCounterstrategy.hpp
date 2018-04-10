@@ -41,8 +41,13 @@ protected:
     using T::postOutputVars;
     using T::doesVariableInheritType;
 
-    XExtractExplicitCounterStrategy<T>(std::list<std::string> &filenames) : T(filenames) {
-        if (filenames.size()==1) {
+    XExtractExplicitCounterStrategy<T>(std::list<std::string> &filenames) : T(filenames) { (void)filenames; }
+
+public:
+
+    void init(std::list<std::string> &filenames) {
+        T::init(filenames);
+        if (filenames.size()==0) {
             outputFilename = "";
         } else {
             outputFilename = filenames.front();
@@ -50,7 +55,6 @@ protected:
         }
     }
 
-public:
 
 /**
  * @brief Compute and print out (to stdout) an explicit-state counter strategy that is winning for
@@ -172,17 +176,10 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
             addDeadlocked(deadlockInput, current, bfsUsedInTheLookupTable,  lookupTableForPastStates, outputStream);
         } else {
 
-            // No deadlock in sight -> Jump to a different liveness guarantee if necessary.
-            while ((currentPossibilities & positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second])==mgr.constantFalse()) current.second.second = (current.second.second + 1) % livenessGuarantees.size();
-            currentPossibilities &= positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second];
-            assert(currentPossibilities != mgr.constantFalse());
-            BF remainingTransitions = currentPossibilities;
-
-             // Choose one next input and stick to it!
-            if (!((remainingTransitions & ! livenessGuarantees[current.second.second]).isFalse())) {
-	      remainingTransitions = remainingTransitions & ! livenessGuarantees[current.second.second];
-	    }
-	    remainingTransitions = determinize(remainingTransitions,postInputVars);
+            // No deadlock in sight -> Do a normal transition
+            BF remainingTransitions = currentPossibilities & positionalStrategiesForTheIndividualGoals[current.second.first][current.second.second];
+            assert(remainingTransition!= mgr.constantFalse());
+            remainingTransitions = determinize(remainingTransitions,postInputVars);
 
             // Switching goals
             while (!(remainingTransitions & safetySys).isFalse()) {
@@ -197,6 +194,12 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
                     nextLivenessAssumption  = (nextLivenessAssumption + 1) % livenessAssumptions.size();
                     firstTry = false;
                 }
+                unsigned int nextLivenessGuarantee = current.second.second;
+                firstTry = true;
+                while (((nextLivenessGuarantee != current.second.second) | firstTry) && !((livenessGuarantees[nextLivenessGuarantee] & newCombination).isFalse())) {
+                    nextLivenessGuarantee  = (nextLivenessGuarantee + 1) % livenessGuarantees.size();
+                    firstTry = false;
+                }
 
                 //Mark which input has been captured by this case. Use the same input for other successors
                 remainingTransitions &= !newCombination;
@@ -208,7 +211,7 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
 
                 std::pair<size_t, std::pair<unsigned int, unsigned int> > target;
 
-                target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(nextLivenessAssumption, current.second.second));
+                target = std::pair<size_t, std::pair<unsigned int, unsigned int> >(newCombination.getHashCode(),std::pair<unsigned int, unsigned int>(nextLivenessAssumption, nextLivenessGuarantee));
 
                 if (lookupTableForPastStates.count(target)==0) {
                     tn = lookupTableForPastStates[target] = bfsUsedInTheLookupTable.size();
@@ -232,7 +235,6 @@ void computeAndPrintExplicitStateStrategy(std::ostream &outputStream) {
         outputStream << "\n";
     }
     }
-
 
     //This function adds a new successor-less "state" that captures the deadlock-causing input values
     //The outputvalues are omitted (indeed, no valuation exists that satisfies the system safeties)

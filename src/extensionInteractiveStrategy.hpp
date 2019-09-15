@@ -2,19 +2,21 @@
 #define __EXTENSION_INTERACTIVE_STRATEGY_HPP
 
 #include <boost/algorithm/string.hpp>
+#include <iostream>
+#include <cstdio>
+#include <ctime>
+#include <iomanip>
 #include "BF.h"
 #include "variableTypes.hpp"
-#include <iostream>
 #include "gr1context.hpp"
-
 
 /**
  * A class that opens an interactive shell to allow examining the property of strategies computed
  *
  */
-template<class T> class XInteractiveStrategy : public T {
+template<class T, bool oneStepRecovery=false> class XInteractiveStrategy : public T {
 protected:
-    XInteractiveStrategy<T>(std::list<std::string> &filenames) : T(filenames) {}
+    XInteractiveStrategy<T, oneStepRecovery>(std::list<std::string> &filenames) : T(filenames) {}
 
     using T::checkRealizability;
     using T::realizable;
@@ -46,11 +48,14 @@ protected:
 
 public:
     static GR1Context* makeInstance(std::list<std::string> &filenames) {
-        return new XInteractiveStrategy<T>(filenames);
+        return new XInteractiveStrategy<T, oneStepRecovery>(filenames);
     }
 
     void execute() {
+        clock_t startCheckRealizability = std::clock();
         checkRealizability();
+        float durationCheckRealizability = ( std::clock() - startCheckRealizability ) / (float) CLOCKS_PER_SEC;
+        std::cerr << "---checkRealizability duration is: "<< durationCheckRealizability <<" seconds.\n";
 
         if (realizable) {
             std::cerr << "RESULT: Specification is realizable.\n";
@@ -62,11 +67,14 @@ public:
         std::vector<BF> positionalStrategiesForTheIndividualGoals;
 
         if (realizable) {
+            clock_t startStrategyDumping = std::clock();
 
             // Use the strategy dumping data that we have already from the synthesis procedure.
             for (unsigned int i=0;i<livenessGuarantees.size();i++) {
                 BF casesCovered = mgr.constantFalse();
                 BF strategy = mgr.constantFalse();
+
+                clock_t startEachLiveness = std::clock();
                 for (auto it = strategyDumpingData.begin();it!=strategyDumpingData.end();it++) {
                     if (it->first == i) {
                         BF newCases = it->second.ExistAbstract(varCubePostOutput) & !casesCovered;
@@ -74,11 +82,18 @@ public:
                         casesCovered |= newCases;
                     }
                 }
+                float durationEachLiveness = ( std::clock() - startEachLiveness ) / (float) CLOCKS_PER_SEC;
+                std::cerr << "+strategy dumping duration is: " <<  durationEachLiveness <<" seconds.\n";
+
+
                 positionalStrategiesForTheIndividualGoals.push_back(strategy);
                 std::ostringstream filename;
                 filename << "/tmp/realizableStratForSystemGoal" << i << ".dot";
                 BF_newDumpDot(*this,strategy,"Pre Post",filename.str().c_str());
             }
+            float durationStrategyDumping = ( std::clock() - startStrategyDumping ) / (float) CLOCKS_PER_SEC;
+            std::cerr << "---strategy dumping duration is: "<<  durationStrategyDumping <<" seconds.\n";
+
         } else {
 
             strategyDumpingData.clear();
@@ -138,6 +153,8 @@ public:
         unsigned int currentLivenessGuarantee = 0;
         assert(positionalStrategiesForTheIndividualGoals.size()>=1);
 
+        std::cerr << "Starting Interactive Strategy Execution" << std::endl;
+        std::cout << "oneStepRecovery:" << std::to_string(oneStepRecovery) << std::endl;
         while(true) {
 
             // The prompt
@@ -170,6 +187,8 @@ public:
                     }
                 }
                 currentPosition = initialPosition;
+                std::cout << std::endl;
+
             } else if (command=="CHECKTRANS") {
 
                 std::cout << "From: \n";
@@ -294,6 +313,7 @@ public:
                         }
                     }
                 }
+                std::cout << std::endl;
                 currentPosition = from;
             } else if (command=="MOVE") {
 
@@ -414,7 +434,71 @@ public:
                         }
                     }
                 }
+                std::cout << std::endl;
+
+            /*added by Catherine STARTED*/
+            } else if (command=="XGETPOSSIBLETRANS") {
+
+                if (currentPosition == mgr.constantFalse()) {
+                    std::cout << "Error: The current position is undefined. Use SETPOS prior to calling MOVE." << std::endl;
+                } else {
+
+                    std::cout << "Guarantee No.: ";
+                    std::cout.flush();
+                    unsigned int guarantee;
+                    std::cin >> guarantee;
+                    if (std::cin.fail()) {
+                        std::cout << "    -> Error reading value. Aborting \n";
+                    } else if (guarantee>=livenessGuarantees.size()) {
+                        std::cout << "    -> Number too large. Aborting \n";
+                    } else {
+
+                        BF allowedInputs = (currentPosition & safetyEnv);
+                        if (allowedInputs.isFalse()) {
+                            std::cout << "No move possible. There is no allowed next input!\n";
+                        } else {
+                            BF_newDumpDot(*this,allowedInputs,"Pre Post","/tmp/allowedInputs.dot");
+
+                            // Compute which transition to takes
+                            BF transition = currentPosition & safetyEnv & safetySys & positionalStrategiesForTheIndividualGoals[guarantee];
+                            //BF transition = currentPosition & safetyEnv & safetySys & winningPositions;
+
+                            if (transition.isFalse()) {
+                                std::cout << "    -> Error: Input not allowed here.\n";
+                                if (!(currentPosition & safetyEnv).isFalse()) {
+                                    std::cout << "       -> Actually, that's an internal error!\n";
+                                }
+                            } else {
+
+                                while (!(transition.isFalse())) {
+                                    BF oneTransition = determinize(transition,postVars);
+
+                                    for (unsigned int i=0;i<variables.size();i++) {
+                                        if ((variableTypes[i]==PostInput) || (variableTypes[i]==PostOutput)){
+                                            if ((variables[i] & oneTransition).isFalse()) {
+                                                //std::cout << " - " << variableNames[i] << " = 0\n";
+                                                std::cout << "0";
+                                                //nextPosition &= !variables[i];
+                                            } else {
+                                                //std::cout << " - " << variableNames[i] << " = 1\n";
+                                                std::cout << "1";
+                                                //nextPosition &= variables[i];
+                                            }
+                                        }
+                                    }
+                                    // remove oneTransition from transition
+                                    transition = transition & !oneTransition;
+
+                                    std::cout << ",";
+                                }
+                                std::cout << std::endl;
+                            }
+                        }
+                    }
+                }
+                std::cout << std::endl;
             }
+            /*added by Catherine ENDED*/
 
             //========================================
             // Simplified functions to be called from
@@ -437,7 +521,7 @@ public:
                         }
                     }
                 }
-                BF trans = currentPosition & postInput & safetyEnv;
+                BF trans = (oneStepRecovery)?(currentPosition & postInput):(currentPosition & postInput & safetyEnv);
                 if (trans.isFalse()) {
                     std::cout << "ERROR\n";
                     if (currentPosition.isFalse()) {
@@ -560,6 +644,11 @@ public:
                 std::cout << "\n"; // Get rid of the prompt
                 std::cout << livenessAssumptions.size() << std::endl;
                 std::cout << livenessGuarantees.size() << std::endl;
+            } else if (command=="XGETCURRENTGOAL"){
+                std::cout << currentLivenessGuarantee << std::endl; // Flushes, too.
+            } else if (command=="XMAKEGOAL"){
+                std::cin >> currentLivenessGuarantee;
+                std::cout << std::endl; // Flushes, too.
             } else if (command=="XGETINIT") {
                 std::cout << "\n"; // Get rid of the prompt
                 BF initialPosition = winningPositions & initEnv & initSys;
@@ -613,7 +702,9 @@ public:
                     }
                 }
 
-                BF possibleInitialPositions = initEnv & forced;
+                BF possibleInitialPositions = forced;
+                //BF possibleInitialPositions = initEnv & forced;
+
 
                 // There exists an allowed initial position
                 char result[preVars.size()];
@@ -694,6 +785,7 @@ public:
                                     if (result[resultPtr]=='.') {
                                         if ((possibleInitialPositions & !variables[i]).isFalse()) {
                                             result[resultPtr] = (realizable)?'G':'S';
+                                            std::cerr << "!Nabend!\n";
                                         } else if ((possibleInitialPositions & variables[i]).isFalse()) {
                                             result[resultPtr] = (realizable)?'g':'s';
                                         }

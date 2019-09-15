@@ -57,7 +57,10 @@
 #include "extensionExtractSymbolicStrategy.hpp"
 #include "extensionTwoDimensionalCost.hpp"
 #include "extensionCooperativeGR1Strategy.hpp"
+#include "extensionExtractExplicitStrategyWithWinningPositions.hpp"
+#include "extensionExtractSymbolicStrategyWithWinningPositions.hpp"
 #include "extensionOptimisticRecovery.hpp"
+#include "extensionUnrealizabilityAnalysis.hpp"
 
 //===================================================================================
 // List of command line arguments
@@ -89,6 +92,9 @@ const char *commandLineArguments[] = {
     "--nonDeterministicMotion","Computes a controller using an non-deterministic motion abstraction.",
     "--twoDimensionalCost","Computes a controller that optimizes for waiting and action cost at the same time.",
     "--cooperativeGR1Strategy","Computes a controller strategy that is cooperative with its environment.",
+    "--withWinningLiveness", "Outputs livness guarantee array conjunted with winning positions.",
+    "--optimisticRecovery","Computes a strategy that also permits environment assumption violations under which no winning states can be reached.",
+    "--unrealizabilityAnalysis", "Isolates system goals that are unrealizable"
     //-END-COMMAND-LINE-ARGUMENT-LIST
 };
 
@@ -249,6 +255,56 @@ OptionCombination optionCombinations[] = {
     OptionCombination("--sysInitRoboticsSemantics --twoDimensionalCost",XTwoDimensionalCost<GR1Context,true,false>::makeInstance),
     OptionCombination("--sysInitRoboticsSemantics",XRoboticsSemantics<GR1Context>::makeInstance),
     OptionCombination("--twoDimensionalCost",XTwoDimensionalCost<GR1Context,false,false>::makeInstance),
+
+    OptionCombination("--cooperativeGR1Strategy",XExtractExplicitStrategy<XCooperativeGR1Strategy<GR1Context>,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --jsonOutput",XExtractExplicitStrategy<XCooperativeGR1Strategy<GR1Context>,false,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --symbolicStrategy",XExtractSymbolicStrategy<XCooperativeGR1Strategy<GR1Context>,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleSymbolicStrategy",XExtractSymbolicStrategy<XCooperativeGR1Strategy<GR1Context>,false,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery",XExtractExplicitStrategy<XCooperativeGR1Strategy<GR1Context>,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --jsonOutput --simpleRecovery",XExtractExplicitStrategy<XCooperativeGR1Strategy<GR1Context>,true,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --symbolicStrategy",XExtractSymbolicStrategy<XCooperativeGR1Strategy<GR1Context>,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --simpleSymbolicStrategy",XExtractSymbolicStrategy<XCooperativeGR1Strategy<GR1Context>,true,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy",XInteractiveStrategy<XCooperativeGR1Strategy<GR1Context> >::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --onlyRealizability",XCooperativeGR1Strategy<GR1Context>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --extractExplicitPermissiveStrategy",XExtractPermissiveExplicitStrategy<XCooperativeGR1Strategy<GR1Context>,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --extractExplicitPermissiveStrategy --simpleRecovery",XExtractPermissiveExplicitStrategy<XCooperativeGR1Strategy<GR1Context>,true>::makeInstance),
+
+    OptionCombination("--cooperativeGR1Strategy --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --jsonOutput --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --symbolicStrategy --sysInitRoboticsSemantics",XExtractSymbolicStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleSymbolicStrategy --sysInitRoboticsSemantics",XExtractSymbolicStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --jsonOutput --simpleRecovery --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics",XExtractSymbolicStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --simpleSymbolicStrategy --sysInitRoboticsSemantics",XExtractSymbolicStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --simpleRecovery --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> > >::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --onlyRealizability --sysInitRoboticsSemantics",XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --onlyRealizability --sysInitRoboticsSemantics",XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >::makeInstance),
+    OptionCombination("--withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<GR1Context,false,false>::makeInstance),
+    OptionCombination("--symbolicStrategy --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<GR1Context,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XCooperativeGR1Strategy<GR1Context>,false,false>::makeInstance),
+    OptionCombination("--simpleRecovery --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<GR1Context,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XCooperativeGR1Strategy<GR1Context>,true,false>::makeInstance),
+    OptionCombination("--sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,false>::makeInstance),
+    OptionCombination("--simpleRecovery --sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --sysInitRoboticsSemantics --withWinningLiveness",XExtractExplicitStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance),
+    OptionCombination("--symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,false,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,false,false>::makeInstance),
+    OptionCombination("--simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<GR1Context>,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --simpleRecovery --symbolicStrategy --sysInitRoboticsSemantics --withWinningLiveness",XExtractSymbolicStrategyWithWinningPositions<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> >,true,false>::makeInstance),
+    OptionCombination("--unrealizabilityAnalysis", XUnrealizabilityAnalysis<GR1Context>::makeInstance),
+    OptionCombination("--sysInitRoboticsSemantics --unrealizabilityAnalysis", XUnrealizabilityAnalysis<XRoboticsSemantics<GR1Context> >::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --sysInitRoboticsSemantics --unrealizabilityAnalysis", XUnrealizabilityAnalysis<XRoboticsSemantics<XCooperativeGR1Strategy<GR1Context> > >::makeInstance),
+
+
+// Optimistic Recovery
+    OptionCombination("--optimisticRecovery --simpleRecovery",XExtractExplicitStrategy<XOptimisticRecovery<GR1Context>,true,false>::makeInstance),
+    OptionCombination("--optimisticRecovery --simpleRecovery --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XOptimisticRecovery<GR1Context>>,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --optimisticRecovery --simpleRecovery --sysInitRoboticsSemantics",XExtractExplicitStrategy<XRoboticsSemantics<XOptimisticRecovery<XCooperativeGR1Strategy<GR1Context>>>,true,false>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --optimisticRecovery --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XOptimisticRecovery<XCooperativeGR1Strategy<GR1Context>>>>::makeInstance),
+    OptionCombination("--cooperativeGR1Strategy --interactiveStrategy --optimisticRecovery --simpleRecovery --sysInitRoboticsSemantics",XInteractiveStrategy<XRoboticsSemantics<XOptimisticRecovery<XCooperativeGR1Strategy<GR1Context>>>,true>::makeInstance)
     //-END-OPTION-COMBINATION-LIST
 };
 
